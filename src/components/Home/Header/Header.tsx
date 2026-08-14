@@ -5,17 +5,20 @@ import { FALLBACK_REPO_STARS } from "../../../constants/fallbackData";
 import { REPO_URL } from "../../../constants/global";
 import { useModal } from "../../../hooks/useModal";
 import { StarIcon } from "../../../constants/icons";
+import { cn } from "../../../utils/cn";
 
 interface HeaderProps {
   toolCount: number;
   categoryCount: number;
   setSearchQuery: (query: string) => void;
+  activeView: "index" | "tools";
 }
 
 export function Header({
   toolCount,
   categoryCount,
   setSearchQuery,
+  activeView,
 }: HeaderProps) {
   const { showModalWithID } = useModal();
   const [starsCount, setStarsCount] = useState("????");
@@ -24,17 +27,54 @@ export function Header({
     setRepoStars(setStarsCount);
   }, []);
 
+  function goToIndex() {
+    setSearchQuery("");
+    if (window.location.hash !== "#/index") {
+      window.location.hash = "#/index";
+    }
+  }
+
   return (
     <header className="border-b-4 border-ink bg-paper">
       <div className="page-container flex flex-wrap items-start justify-between gap-6 py-6">
-        <button
-          type="button"
-          className="cursor-pointer border-0 bg-transparent p-0"
-          onClick={() => setSearchQuery("")}
-          aria-label="FCUK PAYWALLS — back to all tools"
-        >
-          <Wordmark />
-        </button>
+        <div>
+          <button
+            type="button"
+            className="cursor-pointer border-0 bg-transparent p-0"
+            onClick={goToIndex}
+            aria-label="FCUK PAYWALLS — back to all tools"
+          >
+            <Wordmark />
+          </button>
+
+          <nav
+            aria-label="Sections"
+            className="mt-4 flex gap-2"
+          >
+            <a
+              href="#/index"
+              target="_self"
+              aria-current={activeView === "index" ? "page" : undefined}
+              className={cn(
+                "inline-flex h-9 items-center gap-2 rounded-md border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
+                activeView === "index" && "bg-yellow shadow-brutal-sm",
+              )}
+            >
+              [ 01 ] Index
+            </a>
+            <a
+              href="#/tools"
+              target="_self"
+              aria-current={activeView === "tools" ? "page" : undefined}
+              className={cn(
+                "inline-flex h-9 items-center gap-2 rounded-md border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
+                activeView === "tools" && "bg-yellow shadow-brutal-sm",
+              )}
+            >
+              [ 02 ] Tools
+            </a>
+          </nav>
+        </div>
 
         <div className="flex flex-col items-end gap-3">
           <a
