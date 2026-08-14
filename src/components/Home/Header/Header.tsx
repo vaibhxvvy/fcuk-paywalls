@@ -1,0 +1,97 @@
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Wordmark } from "../../branding/Wordmark";
+import { Button } from "../../ui/button";
+import { FALLBACK_REPO_STARS } from "../../../constants/fallbackData";
+import { REPO_URL } from "../../../constants/global";
+import { useModal } from "../../../hooks/useModal";
+import { StarIcon } from "../../../constants/icons";
+
+interface HeaderProps {
+  toolCount: number;
+  categoryCount: number;
+  setSearchQuery: (query: string) => void;
+}
+
+export function Header({
+  toolCount,
+  categoryCount,
+  setSearchQuery,
+}: HeaderProps) {
+  const { showModalWithID } = useModal();
+  const [starsCount, setStarsCount] = useState("????");
+
+  useEffect(() => {
+    setRepoStars(setStarsCount);
+  }, []);
+
+  return (
+    <header className="border-b-4 border-ink bg-paper">
+      <div className="page-container flex flex-wrap items-start justify-between gap-6 py-6">
+        <button
+          type="button"
+          className="cursor-pointer border-0 bg-transparent p-0"
+          onClick={() => setSearchQuery("")}
+          aria-label="FCUK PAYWALLS — back to all tools"
+        >
+          <Wordmark />
+        </button>
+
+        <div className="flex flex-col items-end gap-3">
+          <a
+            href="https://github.com/vaibhxvvy/fcuk-paywalls"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`GitHub repository, current stars: ${starsCount}`}
+            className="inline-flex h-9 items-center gap-2 rounded-md border-[3px] border-ink bg-yellow px-3 font-mono text-xs font-bold text-ink shadow-brutal-sm transition-[transform,box-shadow] duration-150 ease-brutal hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none active:translate-x-[5px] active:translate-y-[5px] active:shadow-none"
+          >
+            {starsCount}
+            <StarIcon className="h-3.5 w-3.5" />
+          </a>
+
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/70">
+            <span>
+              [<span className="text-ink">{String(toolCount).padStart(3, "0")}</span>]{" "}
+              TOOLS
+            </span>
+            <span>
+              [<span className="text-ink">{String(categoryCount).padStart(3, "0")}</span>]{" "}
+              CATEGORIES
+            </span>
+          </div>
+
+          <Button
+            size="md"
+            onClick={() => showModalWithID("submit-tool")}
+            className="uppercase"
+          >
+            Break the wall
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+interface RepoData {
+  stargazers_count: number;
+}
+
+async function fetchRepoData(): Promise<RepoData | null> {
+  try {
+    const response = await fetch(REPO_URL);
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data: RepoData = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch repo's data: ${error}`);
+    return null;
+  }
+}
+
+async function setRepoStars(setStarsCount: Dispatch<SetStateAction<string>>) {
+  const repo = await fetchRepoData();
+  const repoStars = repo?.stargazers_count?.toString() || FALLBACK_REPO_STARS;
+  setStarsCount(repoStars);
+}
