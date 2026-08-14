@@ -1,8 +1,9 @@
-import { Shapes, Lightbulb } from "lucide-react";
+import { Shapes, Lightbulb, ImageDown } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
 import { Badge } from "../ui/badge";
 import { BrickWall } from "../decoration/BrickWall";
 import { SvgViewer } from "./SvgViewer/SvgViewer";
+import { ImageConverter } from "./ImageConverter/ImageConverter";
 
 interface BuiltinToolEntry {
   id: string;
@@ -21,6 +22,14 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: Shapes,
     status: "live",
   },
+  {
+    id: "image-converter",
+    name: "Image converter",
+    description:
+      "SVG, PNG, JPG, WEBP and ICO — convert between any of them with quality and background control. All in your browser.",
+    icon: ImageDown,
+    status: "live",
+  },
 ];
 
 interface BuiltinToolsProps {
@@ -29,6 +38,7 @@ interface BuiltinToolsProps {
 
 export function BuiltinTools({ route }: BuiltinToolsProps) {
   if (route.startsWith("/tools/svg-viewer")) return <SvgViewer />;
+  if (route.startsWith("/tools/image-converter")) return <ImageConverter />;
 
   return <ToolsLanding />;
 }
@@ -56,7 +66,7 @@ function ToolsLanding() {
           {BUILTIN_TOOLS.map((tool, i) => (
             <a
               key={tool.id}
-              href="#/tools/svg-viewer"
+              href={`#/tools/${tool.id}`}
               target="_self"
               className="group relative flex min-h-[220px] flex-col gap-3 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md transition-[transform,box-shadow] duration-200 ease-brutal hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-lg active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm"
             >

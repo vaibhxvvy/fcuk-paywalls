@@ -14,7 +14,7 @@ import { Button, buttonVariants } from "../../ui/button";
 import { BrickWall } from "../../decoration/BrickWall";
 import { cn } from "../../../utils/cn";
 
-const DEFAULT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+export const DEFAULT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
   <rect width="400" height="300" fill="#F5F0E8"/>
   <rect x="40" y="40" width="320" height="220" fill="#FFFFFF" stroke="#111111" stroke-width="6"/>
   <rect x="40" y="40" width="200" height="60" fill="#FFD84D" stroke="#111111" stroke-width="6"/>
