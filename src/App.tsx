@@ -4,6 +4,7 @@ import { Header } from "./components/Home/Header/Header";
 import { Hero } from "./components/Home/Hero/Hero";
 import { ReportFloatingWidget } from "./components/Home/ReportFloatingWidget/ReportFloatingWidget";
 import { ToolFilters } from "./components/Home/ToolFilters/ToolFilters";
+import { PaywallPatterns } from "./components/Home/PaywallPatterns/PaywallPatterns";
 import { Tools } from "./components/Home/Tools/Tools";
 import { BuiltinTools } from "./components/BuiltinTools/BuiltinTools";
 import { ScrollToTopButton } from "./components/Shared/Buttons/ScrollToTopButton/ScrollToTopButton";
@@ -57,6 +58,8 @@ export default function App() {
         ) : (
           <>
             <Hero searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+
+            <PaywallPatterns />
 
             <ToolFilters
               categories={categories}
