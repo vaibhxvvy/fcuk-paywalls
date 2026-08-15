@@ -129,6 +129,9 @@ export function ImageConverter() {
   const [colors, setColors] = useState(16);
   const [blur, setBlur] = useState(0);
   const [gapFill, setGapFill] = useState(1.5);
+  const [traceRes, setTraceRes] = useState<"auto" | "full">("auto");
+  const [thresholdOn, setThresholdOn] = useState(false);
+  const [threshold, setThreshold] = useState(128);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
@@ -141,6 +144,23 @@ export function ImageConverter() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   const zoomClamped = (z: number) => Math.min(4, Math.max(0.25, Math.round(z * 100) / 100));
+
+  const applyPreset = (preset: "line-art" | "photo") => {
+    if (preset === "line-art") {
+      setColors(2);
+      setBlur(0);
+      setTraceRes("full");
+      setThresholdOn(true);
+      setThreshold(128);
+    } else {
+      setColors(16);
+      setBlur(2);
+setTraceRes("auto");
+    setThresholdOn(false);
+    setThreshold(128);
+      setThresholdOn(false);
+    }
+  };
 
   const fitPreview = useCallback(() => {
     const el = previewRef.current;
@@ -245,12 +265,11 @@ export function ImageConverter() {
           });
         } else {
           const flattenBg = bg === "transparent" ? "#FFFFFF" : BG_COLORS[bg];
-          const scale = Math.min(
-            1,
-            MAX_TRACE_DIM / Math.max(img.naturalWidth, img.naturalHeight),
-          );
-          const w = Math.max(1, Math.round(img.naturalWidth * scale));
-          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const sourceMaxDim = Math.max(img.naturalWidth, img.naturalHeight);
+          const cap = traceRes === "full" ? Math.min(3000, sourceMaxDim) : MAX_TRACE_DIM;
+          const scaleFactor = Math.min(1, cap / sourceMaxDim);
+          const w = Math.max(1, Math.round(img.naturalWidth * scaleFactor));
+          const h = Math.max(1, Math.round(img.naturalHeight * scaleFactor));
           const canvas = document.createElement("canvas");
           canvas.width = w;
           canvas.height = h;
@@ -262,11 +281,24 @@ export function ImageConverter() {
           ctx.drawImage(img, 0, 0, w, h);
           const data = ctx.getImageData(0, 0, w, h);
 
+          if (thresholdOn) {
+            const px = data.data;
+            for (let i = 0; i < px.length; i += 4) {
+              const l = 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+              const v = l < threshold ? 0 : 255;
+              px[i] = v;
+              px[i + 1] = v;
+              px[i + 2] = v;
+            }
+          }
+
           await new Promise((resolve) => setTimeout(resolve, 50));
           let svg = ImageTracer.imagedataToSVG(data, {
-            numberOfColors: colors,
-            blurRadius: blur,
+            numberOfColors: thresholdOn ? 2 : colors,
+            blurRadius: thresholdOn ? 0 : blur,
             pathomit: 1,
+            ltres: 0.5,
+            qtres: 0.5,
           });
           if (gapFill > 0) {
             svg = svg.replace(/stroke-width="1"/g, `stroke-width="${gapFill}"`);
@@ -320,11 +352,11 @@ export function ImageConverter() {
     } finally {
       if (id === runIdRef.current) setConverting(false);
     }
-  }, [source, outputFormat, quality, bg, colors, blur, gapFill, lossy]);
+  }, [source, outputFormat, quality, bg, colors, blur, gapFill, traceRes, thresholdOn, threshold, lossy]);
 
   useEffect(() => {
     if (source) void convert();
-  }, [source, outputFormat, quality, bg, colors, blur, gapFill, convert]);
+  }, [source, outputFormat, quality, bg, colors, blur, gapFill, traceRes, thresholdOn, threshold, convert]);
 
   const download = () => {
     if (!result || !source) return;
@@ -352,6 +384,7 @@ export function ImageConverter() {
     setColors(16);
     setBlur(0);
     setGapFill(1.5);
+    setTraceRes("auto");
     setZoom(1);
     setShowChecker(true);
     setConverting(false);
@@ -534,6 +567,26 @@ export function ImageConverter() {
 
             {tracing && (
               <>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/60">
+                    Presets:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("line-art")}
+                    className="rounded-md border-2 border-ink bg-surface-muted px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
+                  >
+                    Line art
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("photo")}
+                    className="rounded-md border-2 border-ink bg-surface-muted px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
+                  >
+                    Photo
+                  </button>
+                </div>
+
                 <div className="mt-5">
                   <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
                     <span>Colors</span>
@@ -550,6 +603,83 @@ export function ImageConverter() {
                   />
                   <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
                     Higher = closer to the original. Lower = flatter, bolder.
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                    <span>Trace resolution</span>
+                    <span>{traceRes === "full" ? "FULL" : "1400 CAP"}</span>
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTraceRes("auto")}
+                      aria-pressed={traceRes === "auto"}
+                      className={cn(
+                        "rounded-md border-2 border-ink px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                        traceRes === "auto"
+                          ? "bg-ink text-surface shadow-brutal-sm"
+                          : "bg-surface-muted hover:bg-yellow/30",
+                      )}
+                    >
+                      Auto
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTraceRes("full")}
+                      aria-pressed={traceRes === "full"}
+                      className={cn(
+                        "rounded-md border-2 border-ink px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                        traceRes === "full"
+                          ? "bg-ink text-surface shadow-brutal-sm"
+                          : "bg-surface-muted hover:bg-yellow/30",
+                      )}
+                    >
+                      Full res
+                    </button>
+                  </div>
+                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+                    Auto caps the scan at 1400px — thin lines in big images
+                    vanish. Full res traces at source size: the finest lines
+                    survive, but it&apos;s slower. Line art loves full res.
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                    <span>Threshold (B/W)</span>
+                    <span>{thresholdOn ? threshold : "OFF"}</span>
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setThresholdOn(!thresholdOn)}
+                      aria-pressed={thresholdOn}
+                      className={cn(
+                        "rounded-md border-2 border-ink px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                        thresholdOn
+                          ? "bg-ink text-surface shadow-brutal-sm"
+                          : "bg-surface-muted hover:bg-yellow/30",
+                      )}
+                    >
+                      {thresholdOn ? "On" : "Off"}
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={255}
+                      step={1}
+                      value={threshold}
+                      disabled={!thresholdOn}
+                      onChange={(e) => setThreshold(Number(e.target.value))}
+                      className="flex-1 accent-yellow disabled:opacity-40"
+                    />
+                  </div>
+                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+                    Snaps every pixel to black or white — faded, anti-aliased
+                    or thin lines become guaranteed ink that never gets
+                    washed out by color quantization.
                   </p>
                 </div>
 
@@ -785,9 +915,10 @@ export function ImageConverter() {
 
         <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
           ICO output embeds 16, 32, 48 and 256 px frames. Traced sources are
-          flattened onto your background and downscaled to 1400px on the long
-          edge — then drawn as pure SVG paths. All conversions run locally in
-          your browser.
+          flattened onto your background, scanned at up to full source
+          resolution so thin lines survive — optionally snapped to pure
+          black/white first — and drawn as pure SVG paths. All conversions
+          run locally in your browser.
         </p>
       </div>
 
