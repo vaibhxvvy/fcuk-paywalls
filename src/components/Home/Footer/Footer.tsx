@@ -14,7 +14,7 @@ export function Footer() {
           </h3>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-paper/70">
             FCUK PAYWALLS is a curated index of tools that respect your time.
-            No signups. No spam. No dark patterns. The wall is the problem —
+            No accounts. No spam. No dark patterns. The wall is the problem —
             these are the solutions.
           </p>
         </div>

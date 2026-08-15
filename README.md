@@ -1,7 +1,7 @@
 # FCUK PAYWALLS
 
 [**Open Source Tools. Zero Bullsh*t.**
-The internet has walls — signup walls, login walls, paywalls. This index collects the keys: curated open-source tools you can use instantly in your browser. No accounts, no emails, no tracking. Just tools that work.
+The internet has walls — paywalls, login walls, signup walls. This index collects the keys: curated open-source tools you can use instantly in your browser. No accounts, no emails, no tracking. Just tools that work.
 
 ---
 
@@ -81,8 +81,6 @@ The default categories are:
 ---
 
 ## Discussions
-
-If you'd like to voice your opinion, we have a community on reddit [r/fucksignups](https://www.reddit.com/r/fucksignups/).
 
 Don't be afraid to critique.
 
