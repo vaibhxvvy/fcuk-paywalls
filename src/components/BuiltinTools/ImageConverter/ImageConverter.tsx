@@ -7,6 +7,8 @@ import {
   ImageUp,
   RotateCcw,
   Wand2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
@@ -66,6 +68,7 @@ interface ConvertResult {
   bytes: number;
   paths?: number;
   svgText?: string;
+  dims: { width: number; height: number };
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -131,8 +134,28 @@ export function ImageConverter() {
   const [converting, setConverting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<ConvertResult | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [showChecker, setShowChecker] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const runIdRef = useRef(0);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const zoomClamped = (z: number) => Math.min(4, Math.max(0.25, Math.round(z * 100) / 100));
+
+  const fitPreview = useCallback(() => {
+    const el = previewRef.current;
+    if (!el || !result) return;
+    const pad = 32;
+    const scale = Math.min(
+      (el.clientHeight - pad) / result.dims.height,
+      (el.clientWidth - pad) / result.dims.width,
+    );
+    setZoom(zoomClamped(scale));
+  }, [result]);
+
+  useEffect(() => {
+    if (result) fitPreview();
+  }, [result, fitPreview]);
 
   const lossy = outputFormat === "jpg" || outputFormat === "webp";
   const tracing = outputFormat === "svg" && source?.kind !== "svg";
@@ -218,6 +241,7 @@ export function ImageConverter() {
             blob,
             bytes: blob.size,
             svgText: source.svgText,
+            dims: { width: source.width, height: source.height },
           });
         } else {
           const flattenBg = bg === "transparent" ? "#FFFFFF" : BG_COLORS[bg];
@@ -258,6 +282,7 @@ export function ImageConverter() {
             bytes: blob.size,
             paths: (svg.match(/<path /g) || []).length,
             svgText: svg,
+            dims: { width: w, height: h },
           });
         }
       } else if (outputFormat === "ico") {
@@ -268,11 +293,21 @@ export function ImageConverter() {
           entries.push({ png, size });
         }
         const ico = await pngsToIco(entries);
-        setResult({ url: URL.createObjectURL(ico), blob: ico, bytes: ico.size });
+        setResult({
+          url: URL.createObjectURL(ico),
+          blob: ico,
+          bytes: ico.size,
+          dims: { width: 256, height: 256 },
+        });
       } else {
         const canvas = drawScaled(img, img.naturalWidth, img.naturalHeight, bg);
         const blob = await canvasToBlob(canvas, MIME_MAP[outputFormat], lossy ? quality : undefined);
-        setResult({ url: URL.createObjectURL(blob), blob, bytes: blob.size });
+        setResult({
+          url: URL.createObjectURL(blob),
+          blob,
+          bytes: blob.size,
+          dims: { width: img.naturalWidth, height: img.naturalHeight },
+        });
       }
     } catch {
       if (id === runIdRef.current) {
@@ -317,6 +352,8 @@ export function ImageConverter() {
     setColors(16);
     setBlur(0);
     setGapFill(1.5);
+    setZoom(1);
+    setShowChecker(true);
     setConverting(false);
   };
 
@@ -415,11 +452,11 @@ export function ImageConverter() {
               </>
             ) : (
               <>
-                <div className="mt-4 flex min-h-[220px] items-center justify-center overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(#e8e1d5_0%_25%,#ffffff_0%_50%)] bg-[length:24px_24px] p-4">
+                <div className="mt-4 flex min-h-[240px] items-center justify-center overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(#e8e1d5_0%_25%,#ffffff_0%_50%)] bg-[length:24px_24px] p-4">
                   <img
                     src={source.url}
                     alt={source.name}
-                    className="max-h-56 max-w-full object-contain"
+                    className="max-h-72 max-w-full object-contain"
                   />
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/70">
@@ -609,7 +646,65 @@ export function ImageConverter() {
                 <span>Preview</span>
                 <span className="text-ink/30">wants-a-format-first</span>
               </p>
-              <div className="flex min-h-[140px] items-center justify-center overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(#e8e1d5_0%_25%,#ffffff_0%_50%)] bg-[length:24px_24px]">
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setZoom(zoomClamped(zoom - 0.25))}
+                    disabled={!result}
+                    aria-label="Zoom out"
+                    className="h-9 rounded-md border-2 border-ink bg-white px-2 text-ink transition-transform duration-100 ease-brutal hover:bg-yellow active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ZoomOut className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fitPreview}
+                    disabled={!result}
+                    aria-label="Reset zoom to fit"
+                    className="h-9 rounded-md border-2 border-ink bg-white px-2 font-mono text-[11px] font-bold text-ink transition-transform duration-100 ease-brutal hover:bg-yellow active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(zoomClamped(zoom + 0.25))}
+                    disabled={!result}
+                    aria-label="Zoom in"
+                    className="h-9 rounded-md border-2 border-ink bg-white px-2 text-ink transition-transform duration-100 ease-brutal hover:bg-yellow active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ZoomIn className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fitPreview}
+                    disabled={!result}
+                    className="h-9 rounded-md border-2 border-ink bg-white px-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-transform duration-100 ease-brutal hover:bg-yellow active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Fit
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChecker(!showChecker)}
+                  aria-pressed={showChecker}
+                  className={cn(
+                    "h-9 rounded-md border-2 border-ink px-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-[background-color] duration-150 ease-brutal",
+                    showChecker ? "bg-yellow text-ink" : "bg-white text-ink hover:bg-yellow/40",
+                  )}
+                >
+                  Checker
+                </button>
+              </div>
+              <div
+                ref={previewRef}
+                className={cn(
+                  "mt-2 flex h-[420px] items-center justify-center overflow-auto rounded-md border-2 border-ink p-4",
+                  showChecker
+                    ? "bg-[repeating-conic-gradient(#e8e1d5_0%_25%,#ffffff_0%_50%)] bg-[length:24px_24px]"
+                    : "bg-paper",
+                )}
+              >
                 {converting ? (
                   <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-ink/60">
                     {tracing ? "Tracing…" : "Crushing…"}
@@ -618,7 +713,9 @@ export function ImageConverter() {
                   <img
                     src={result.url}
                     alt="Converted preview"
-                    className="max-h-36 max-w-full object-contain"
+                    draggable={false}
+                    className="m-auto h-auto max-w-none select-none"
+                    style={{ width: Math.max(1, Math.round(result.dims.width * zoom)) }}
                   />
                 ) : (
                   <ImageDown className="h-10 w-10 text-ink/30" aria-hidden="true" />
