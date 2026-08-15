@@ -15,6 +15,8 @@ import {
   ImagePlus,
   FileDown,
   FileImage,
+  ChevronDown,
+  FileCode2,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -692,6 +694,25 @@ function loadFonts(t: Template) {
 const A4_W = 794;
 const A4_H = 1123;
 
+const ACCENTS = ["#FFD84D", "#FF5A5F", "#0F6CBD", "#65D68A", "#A31F34", "#8B5CF6", "#111111"] as const;
+
+const SAVE_FORMATS = [
+  { id: "pdf", label: "PDF", icon: Printer, hint: "full A4" },
+  { id: "png", label: "PNG", icon: FileImage, hint: "image" },
+  { id: "docx", label: "DOCX", icon: FileText, hint: "Word" },
+  { id: "tex", label: "TEX", icon: FileCode2, hint: "Overleaf" },
+] as const;
+
+type SaveFormatId = (typeof SAVE_FORMATS)[number]["id"];
+
+const texEscape = (s: string) =>
+  s.replace(/[\\&%$#_{}~^]/g, (ch) => {
+    if (ch === "\\") return "\\textbackslash{}";
+    if (ch === "^") return "\\textasciicircum{}";
+    if (ch === "~") return "\\textasciitilde{}";
+    return "\\" + ch;
+  });
+
 function bulletsOf(s: string): string[] {
   return s.split("\n").map((l) => l.trim()).filter(Boolean);
 }
@@ -1356,9 +1377,18 @@ export function ResumeBuilder() {
   const [preset, setPreset] = useState<FieldPresetId>("engineering");
   const [data, setData] = useState<ResumeData>(() => FIELD_PRESETS.engineering.data());
   const [templateId, setTemplateId] = useState<TemplateId>("editorial");
+  const [accent, setAccent] = useState<string | null>(null);
   const [scale, setScale] = useState(0.5);
+  const [fit, setFit] = useState(true);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const fitRef = useRef(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const template = useMemo(() => {
+    const base = TEMPLATES.find((t) => t.id === templateId)!;
+    return accent ? { ...base, accent } : base;
+  }, [templateId, accent]);
 
   const onPhotoFile = (file: File) => {
     const reader = new FileReader();
@@ -1381,8 +1411,6 @@ export function ResumeBuilder() {
     reader.readAsDataURL(file);
   };
 
-  const template = TEMPLATES.find((t) => t.id === templateId)!;
-
   useEffect(() => {
     loadFonts(template);
   }, [template]);
@@ -1390,12 +1418,28 @@ export function ResumeBuilder() {
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
-    const measure = () => setScale(Math.min(1, el.clientWidth / A4_W));
+    const measure = () => {
+      const w = el.clientWidth - 32;
+      if (fitRef.current) setScale(Math.min(1, Math.max(0.2, w / A4_W)));
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const stepZoom = (d: number) => {
+    fitRef.current = false;
+    setFit(false);
+    setScale((s) => Math.min(1.5, Math.max(0.25, Math.round((s + d) * 100) / 100)));
+  };
+
+  const clickFit = () => {
+    fitRef.current = true;
+    setFit(true);
+    const el = previewRef.current;
+    if (el) setScale(Math.min(1, Math.max(0.2, (el.clientWidth - 32) / A4_W)));
+  };
 
   const set = (patch: Partial<ResumeData>) => setData((d) => ({ ...d, ...patch }));
   const setExp = (i: number, patch: Partial<ExperienceItem>) =>
@@ -1412,41 +1456,9 @@ export function ResumeBuilder() {
     setTemplateId(presetData && FIELD_PRESETS[p].template === "brutal" ? "brutal" : (FIELD_PRESETS[p].template as TemplateId));
   };
 
-  const print = () => {
-    window.print();
-  };
-
   const contactLine = [data.email, data.phone, data.location, data.website, data.linkedin, data.github]
     .filter(Boolean)
     .join(" | ");
-
-  const exportTxt = () => {
-    const lines: string[] = [];
-    lines.push(data.name.toUpperCase(), data.title, "", contactLine, "");
-    lines.push("PROFILE", data.summary, "");
-    lines.push("EXPERIENCE");
-    for (const e of data.experience) {
-      lines.push(`${e.role} — ${e.company}${e.location ? ` · ${e.location}` : ""} (${e.start}${e.end ? ` – ${e.end}` : ""})`);
-      for (const b of e.bullets) lines.push(`- ${b}`);
-    }
-    lines.push("");
-    lines.push("EDUCATION");
-    for (const ed of data.education) {
-      lines.push(`${ed.degree} — ${ed.school} (${ed.start}${ed.end ? ` – ${ed.end}` : ""})${ed.notes ? ` · ${ed.notes}` : ""}`);
-    }
-    lines.push("");
-    lines.push("SKILLS");
-    lines.push(data.skills.join(", "));
-    if (data.projects.length > 0) {
-      lines.push("", "PROJECTS");
-      for (const p of data.projects) lines.push(`- ${p.name}${p.link ? ` (${p.link})` : ""}: ${p.description}`);
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.download = "fcuk-resume.txt";
-    a.href = URL.createObjectURL(blob);
-    a.click();
-  };
 
   const exportDocx = async () => {
     const { zipSync, strToU8 } = await import("fflate");
@@ -1570,6 +1582,74 @@ export function ResumeBuilder() {
     }
   };
 
+  const exportTex = () => {
+    const e = texEscape;
+    const parts: string[] = [];
+    parts.push(
+      `\\documentclass[a4paper,10pt,oneside]{article}`,
+      `\\usepackage[margin=1.5cm,top=1.3cm,bottom=1.3cm]{geometry}`,
+      `\\usepackage[T1]{fontenc}`,
+      `\\usepackage[utf8]{inputenc}`,
+      `\\usepackage{helvet}`,
+      `\\renewcommand{\\familydefault}{\\sfdefault}`,
+      `\\usepackage{titlesec}`,
+      `\\usepackage{enumitem}`,
+      `\\usepackage{parskip}`,
+      `\\usepackage{xcolor}`,
+      `\\usepackage[hidelinks]{hyperref}`,
+      `\\definecolor{accent}{HTML}{${template.accent.replace("#", "").toUpperCase()}}`,
+      `\\setlist{nosep,leftmargin=*}`,
+      `\\titlespacing{\\section}{0pt}{12pt}{5pt}`,
+      `\\titleformat{\\section}{\\large\\bfseries\\color{accent}\\MakeUppercase}{}{0pt}{}[\\vspace{-7pt}\\textcolor{accent}{\\hrulefill}]`,
+      `\\titlespacing{\\subsection}{0pt}{9pt}{2pt}`,
+      `\\titleformat{\\subsection}{\\normalsize\\bfseries}{}{0pt}{}`,
+      `\\pagestyle{empty}`,
+      `\\begin{document}`,
+      `{\\LARGE\\bfseries ${e(data.name)}}\\\\`,
+      `{\\large ${e(data.title)}}\\\\`,
+      `{\\small ${e(contactLine)}}`,
+      `\\section{Profile}`,
+      e(data.summary),
+      `\\section{Experience}`,
+    );
+    for (const exp of data.experience) {
+      parts.push(
+        `\\subsection*{${e(exp.role)} — ${e(exp.company)}${exp.location ? ` · ${e(exp.location)}` : ""} \\hfill ${e(exp.start)}${exp.end ? ` – ${e(exp.end)}` : ""}}`,
+        `\\begin{itemize}`,
+      );
+      for (const b of exp.bullets) parts.push(`  \\item ${e(b)}`);
+      parts.push(`\\end{itemize}`);
+    }
+    parts.push(`\\section{Education}`);
+    for (const ed of data.education) {
+      parts.push(
+        `\\subsection*{${e(ed.degree)} — ${e(ed.school)} \\hfill ${e(ed.start)}${ed.end ? ` – ${e(ed.end)}` : ""}}`,
+      );
+      if (ed.notes) parts.push(`{\\small ${e(ed.notes)}}`);
+    }
+    parts.push(`\\section{Skills}`, e(data.skills.join(", ")));
+    if (data.projects.length > 0) {
+      parts.push(`\\section{Projects}`, `\\begin{itemize}`);
+      for (const p of data.projects) {
+        parts.push(`  \\item \\textbf{${e(p.name)}}${p.link ? ` (${e(p.link)})` : ""}: ${e(p.description)}`);
+      }
+      parts.push(`\\end{itemize}`);
+    }
+    parts.push(`\\end{document}`);
+    const blob = new Blob([parts.join("\n")], { type: "application/x-tex;charset=utf-8" });
+    const a = document.createElement("a");
+    a.download = "fcuk-resume.tex";
+    a.href = URL.createObjectURL(blob);
+    a.click();
+  };
+
+  const runExport = (id: SaveFormatId) => {
+    if (id === "pdf") window.print();
+    else if (id === "png") void exportPng();
+    else if (id === "docx") void exportDocx();
+    else exportTex();
+  };
+
   const reset = () => {
     const d = FIELD_PRESETS[preset].data();
     setData(d);
@@ -1587,14 +1667,16 @@ export function ResumeBuilder() {
 
   return (
     <ToolShell
+      fill
       crumb="RESUME-BUILDER"
       title="The papers."
-      tagline="Build a resume that exports to a clean PDF — no signup to download your own work. Templates for every field."
+      tagline="Build on the left, inspect on the right. Export PDF, PNG, DOCX or TEX for Overleaf — no download wall."
     >
-      <div className="mt-10 grid gap-8 xl:grid-cols-[460px_1fr]">
-        {/* ---- Editor ---- */}
-        <div className="order-2 space-y-6 xl:order-1">
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+      <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-2">
+        {/* ---- Editor pane ---- */}
+        <div className="max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
+          <div className="space-y-5 p-4">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [01] Your field
               <Briefcase className="h-4 w-4" aria-hidden="true" />
@@ -1619,7 +1701,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [02] Template
               <FileText className="h-4 w-4" aria-hidden="true" />
@@ -1652,6 +1734,36 @@ export function ResumeBuilder() {
                 </button>
               ))}
             </div>
+            <div className="mt-4">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">
+                Accent colour — {accent ?? "template default"}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setAccent(null)}
+                  className={cn(
+                    "rounded-md border-2 border-ink px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-[background-color,shadow] duration-200 ease-brutal",
+                    accent === null ? "bg-ink text-surface shadow-brutal-sm" : "bg-surface-muted hover:bg-yellow/30",
+                  )}
+                >
+                  Default
+                </button>
+                {ACCENTS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setAccent(c)}
+                    aria-label={`Accent ${c}`}
+                    className={cn(
+                      "h-7 w-7 border-2 border-ink transition-[transform,box-shadow] duration-200 ease-brutal",
+                      accent === c && "scale-110 shadow-brutal-sm",
+                    )}
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+            </div>
             {templateId === "editorial" && (
               <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted px-3 py-2">
                 <input
@@ -1667,7 +1779,7 @@ export function ResumeBuilder() {
             )}
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[03] Contact</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <Field label="Full name" value={data.name} onChange={(v) => set({ name: v })} />
@@ -1748,7 +1860,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [04] Experience
               <button type="button" onClick={() => set({ experience: [...data.experience, { company: "", role: "", location: "", start: "", end: "", bullets: [] }] })}
@@ -1791,7 +1903,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [05] Education
               <button type="button" onClick={() => set({ education: [...data.education, { school: "", degree: "", location: "", start: "", end: "", notes: "" }] })}
@@ -1828,7 +1940,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [06] Skills
               <Wrench className="h-4 w-4" aria-hidden="true" />
@@ -1845,7 +1957,7 @@ export function ResumeBuilder() {
             </label>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [07] Projects / selected work
               <button type="button" onClick={() => set({ projects: [...data.projects, { name: "", link: "", description: "" }] })}
@@ -1875,50 +1987,116 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={print} size="md" className="min-w-40 flex-1 uppercase">
-              <Printer className="h-4 w-4" aria-hidden="true" /> Save as PDF
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="md" onClick={reset} className="uppercase">
+              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset to preset
             </Button>
-            <Button variant="secondary" size="md" onClick={exportTxt} className="uppercase">
-              <FileText className="h-4 w-4" aria-hidden="true" /> .TXT
-            </Button>
-            <Button variant="secondary" size="md" onClick={() => void exportDocx()} className="uppercase">
-              <FileDown className="h-4 w-4" aria-hidden="true" /> .DOCX
-            </Button>
-            <Button variant="secondary" size="md" onClick={() => void exportPng()} className="uppercase">
-              <FileImage className="h-4 w-4" aria-hidden="true" /> .PNG
-            </Button>
-            <Button variant="secondary" size="md" onClick={reset} className="ml-auto uppercase">
-              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset
-            </Button>
+            <p className="ml-auto font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
+              Preset: {FIELD_PRESETS[preset].label}
+            </p>
+          </div>
           </div>
         </div>
 
-        {/* ---- Preview ---- */}
-        <div className="order-1 self-start xl:sticky xl:top-24 xl:order-2">
-          <div className="flex items-center justify-between rounded-t-lg border-[3px] border-ink bg-ink px-4 py-2.5">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-paper">
-              [08] Live preview — {template.name} template
+        {/* ---- Preview pane ---- */}
+        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-3 py-2">
+            <p className="truncate font-mono text-[10px] font-bold uppercase tracking-widest text-paper">
+              [08] Live preview — {template.name}
             </p>
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-paper/50">
-              ~{estimatedLines} lines · {A4_W}×{A4_H}px
-            </p>
-          </div>
-          <div ref={previewRef} className="overflow-hidden rounded-b-lg border-[3px] border-t-0 border-ink bg-paper p-3">
-            <div
-              className="mx-auto origin-top overflow-hidden rounded-sm shadow-brutal-md"
-              style={{
-                width: A4_W * scale,
-                height: A4_H * scale,
-                background: "#fff",
-              }}
-            >
-              <div className="origin-top-left" style={{ transform: `scale(${scale})`, width: A4_W, height: A4_H }}>
-                <ResumeView data={data} template={template} />
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center rounded-md border-2 border-paper/40">
+                <button
+                  type="button"
+                  onClick={() => stepZoom(-0.25)}
+                  className="px-2 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  onClick={clickFit}
+                  className={cn(
+                    "min-w-12 px-1 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ease-brutal",
+                    fit ? "text-yellow" : "text-paper hover:text-yellow",
+                  )}
+                  aria-label="Fit preview to width"
+                >
+                  {fit ? "Fit" : `${Math.round(scale * 100)}%`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepZoom(0.25)}
+                  className="px-2 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+              </div>
+              <div className="relative">
+                <Button size="sm" onClick={() => setSaveOpen((o) => !o)} className="uppercase">
+                  <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Save
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+                {saveOpen && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Close save menu"
+                      className="fixed inset-0 z-10 cursor-default"
+                      onClick={() => setSaveOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full z-20 mt-2 w-48 rounded-lg border-[3px] border-ink bg-surface p-1.5 shadow-brutal-md">
+                      {SAVE_FORMATS.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setSaveOpen(false);
+                            runExport(f.id);
+                          }}
+                          className="flex w-full items-center justify-between gap-2 rounded-md border-2 border-transparent px-2.5 py-2 text-left font-mono text-[11px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:border-ink hover:bg-yellow/30"
+                        >
+                          <span className="flex items-center gap-2">
+                            <f.icon className="h-3.5 w-3.5" aria-hidden="true" /> {f.label}
+                          </span>
+                          <span className="font-mono text-[8px] font-semibold text-ink/40">{f.hint}</span>
+                        </button>
+                      ))}
+                      <div className="mt-1 border-t-2 border-ink/20 px-1 pt-1.5 font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/40">
+                        TEX opens straight in Overleaf · PDF prints full A4
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            <p className="mt-3 text-center font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
-              Preview is scaled — print output is full A4
+          </div>
+
+          <div ref={previewRef} className="relative min-h-0 flex-1 overflow-auto bg-surface-muted">
+            <div className="flex w-full items-start justify-center p-4">
+              <div
+                className="shrink-0 overflow-hidden rounded-sm shadow-brutal-md"
+                style={{
+                  width: A4_W * scale,
+                  height: A4_H * scale,
+                  background: "#fff",
+                }}
+              >
+                <div className="origin-top-left" style={{ transform: `scale(${scale})`, width: A4_W, height: A4_H }}>
+                  <ResumeView data={data} template={template} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-[3px] border-ink bg-surface px-3 py-1.5">
+            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/40">
+              ~{estimatedLines} lines · {A4_W}×{A4_H}px · exports stay in your tab
+            </p>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
+              {fit ? "Fits preview width" : `${Math.round(scale * 100)}% of full size`}
             </p>
           </div>
         </div>
@@ -1930,10 +2108,6 @@ export function ResumeBuilder() {
           <ResumeView data={data} template={template} />
         </div>
       </div>
-
-      <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-        Everything stays in your tab — PDF, TXT, DOCX and PNG export. Your work is yours, no download wall.
-      </p>
     </ToolShell>
   );
 }
