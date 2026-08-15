@@ -13,6 +13,8 @@ import {
   Printer,
   RotateCcw,
   ImagePlus,
+  FileDown,
+  FileImage,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -599,6 +601,7 @@ interface ResumeData {
   skills: string[];
   photo?: string;
   showPhoto?: boolean;
+  showCvKicker?: boolean;
 }
 
 type TemplateId = "editorial" | "classic" | "modern" | "brutal" | "minimal" | "magazine" | "badge";
@@ -619,7 +622,7 @@ const TEMPLATES: Template[] = [
     desc: "The MIT thesis look — serif display, hairline rules, quiet authority.",
     fonts: { display: "Playfair Display", body: "Newsreader", mono: "IBM Plex Mono" },
     accent: "#A31F34",
-    photo: "small",
+    photo: "none",
   },
   {
     id: "classic",
@@ -635,7 +638,7 @@ const TEMPLATES: Template[] = [
     desc: "Two-column with accent sidebar and tag chips. Built for ATS and humans.",
     fonts: { display: "Space Grotesk", body: "Inter", mono: "JetBrains Mono" },
     accent: "#0F6CBD",
-    photo: "circle",
+    photo: "none",
   },
   {
     id: "brutal",
@@ -659,7 +662,7 @@ const TEMPLATES: Template[] = [
     desc: "Big photo banner, masthead kicker, red accent. The cover-page look.",
     fonts: { display: "Playfair Display", body: "Inter", mono: "IBM Plex Mono" },
     accent: "#FF5A5F",
-    photo: "banner",
+    photo: "none",
   },
   {
     id: "badge",
@@ -667,7 +670,7 @@ const TEMPLATES: Template[] = [
     desc: "Centered circular photo, ID-card energy. Bold, personal, unforgettable.",
     fonts: { display: "Archivo Black", body: "Space Grotesk", mono: "IBM Plex Mono" },
     accent: "#4D8DFF",
-    photo: "center-circle",
+    photo: "none",
   },
 ];
 
@@ -767,17 +770,11 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
     return (
       <div className="flex h-full flex-col px-16 py-14" style={{ fontFamily: b }}>
         <header className="text-center">
-          {show && (
-            <img
-              src={show}
-              alt=""
-              className="mx-auto mb-4 h-[76px] w-[76px] border-2 object-cover"
-              style={{ borderColor: a }}
-            />
+          {data.showCvKicker !== false && (
+            <p className="font-semibold uppercase" style={{ fontFamily: m, fontSize: 10, letterSpacing: 3, color: a }}>
+              Curriculum Vitae
+            </p>
           )}
-          <p className="font-semibold uppercase" style={{ fontFamily: m, fontSize: 10, letterSpacing: 3, color: a }}>
-            Curriculum Vitae
-          </p>
           <h1 className="mt-3 font-bold" style={{ fontFamily: d, fontSize: 44, lineHeight: 1.05, color: ink }}>
             {data.name}
           </h1>
@@ -923,13 +920,6 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
     return (
       <div className="flex h-full" style={{ fontFamily: b }}>
         <aside className="flex w-[240px] shrink-0 flex-col px-7 py-12 text-white" style={{ background: a }}>
-          {show && (
-            <img
-              src={show}
-              alt=""
-              className="mb-5 h-[110px] w-[110px] rounded-full border-[3px] border-white/80 object-cover shadow-md"
-            />
-          )}
           <h1 className="text-[24px] font-bold leading-tight" style={{ fontFamily: d }}>{data.name}</h1>
           <p className="mt-1 text-[11.5px] font-medium opacity-80">{data.title}</p>
           <div className="mt-5 space-y-1.5 text-[10px] opacity-90">
@@ -1107,11 +1097,6 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
     return (
       <div className="flex h-full flex-col" style={{ fontFamily: b }}>
         <header className="shrink-0">
-          {show && (
-            <div className="h-[210px] w-full overflow-hidden border-b-[6px] border-ink">
-              <img src={show} alt="" className="h-full w-full object-cover object-top" />
-            </div>
-          )}
           <div className="px-14 pt-8 pb-6">
             <p className="font-semibold uppercase" style={{ fontFamily: m, fontSize: 10, letterSpacing: 4, color: a }}>
               {data.title}
@@ -1191,15 +1176,7 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
     return (
       <div className="flex h-full flex-col px-14 py-12" style={{ fontFamily: b }}>
         <header className="text-center">
-          {show && (
-            <img
-              src={show}
-              alt=""
-              className="mx-auto h-[122px] w-[122px] rounded-full border-4 object-cover"
-              style={{ borderColor: ink }}
-            />
-          )}
-          <h1 className="mt-4 text-[40px] font-black uppercase leading-none tracking-tight" style={{ fontFamily: d, color: ink }}>
+          <h1 className="text-[40px] font-black uppercase leading-none tracking-tight" style={{ fontFamily: d, color: ink }}>
             {data.name}
           </h1>
           <p
@@ -1350,7 +1327,7 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
 }
 
 const fieldInput =
-  "w-full rounded-md border-2 border-ink bg-surface-muted px-2.5 py-1.5 font-mono text-xs font-semibold text-ink outline-none placeholder:text-ink/30 focus:border-yellow";
+  "w-full rounded-md border-2 border-ink bg-surface-muted px-3 py-2 font-mono text-xs font-semibold text-ink outline-none placeholder:text-ink/30 focus:border-yellow";
 
 function Field({ label, value, onChange, textarea }: {
   label: string;
@@ -1439,6 +1416,160 @@ export function ResumeBuilder() {
     window.print();
   };
 
+  const contactLine = [data.email, data.phone, data.location, data.website, data.linkedin, data.github]
+    .filter(Boolean)
+    .join(" | ");
+
+  const exportTxt = () => {
+    const lines: string[] = [];
+    lines.push(data.name.toUpperCase(), data.title, "", contactLine, "");
+    lines.push("PROFILE", data.summary, "");
+    lines.push("EXPERIENCE");
+    for (const e of data.experience) {
+      lines.push(`${e.role} — ${e.company}${e.location ? ` · ${e.location}` : ""} (${e.start}${e.end ? ` – ${e.end}` : ""})`);
+      for (const b of e.bullets) lines.push(`- ${b}`);
+    }
+    lines.push("");
+    lines.push("EDUCATION");
+    for (const ed of data.education) {
+      lines.push(`${ed.degree} — ${ed.school} (${ed.start}${ed.end ? ` – ${ed.end}` : ""})${ed.notes ? ` · ${ed.notes}` : ""}`);
+    }
+    lines.push("");
+    lines.push("SKILLS");
+    lines.push(data.skills.join(", "));
+    if (data.projects.length > 0) {
+      lines.push("", "PROJECTS");
+      for (const p of data.projects) lines.push(`- ${p.name}${p.link ? ` (${p.link})` : ""}: ${p.description}`);
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.download = "fcuk-resume.txt";
+    a.href = URL.createObjectURL(blob);
+    a.click();
+  };
+
+  const exportDocx = async () => {
+    const { zipSync, strToU8 } = await import("fflate");
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const p = (
+      runs: { text: string; bold?: boolean; size?: number; caps?: boolean; italic?: boolean }[],
+      opts: { after?: number; bullet?: boolean } = {},
+    ) => {
+      const body = runs
+        .map(
+          (r) =>
+            `<w:r><w:rPr>${r.bold ? "<w:b/>" : ""}${r.italic ? "<w:i/>" : ""}${
+              r.caps ? "<w:caps/>" : ""
+            }${r.size ? `<w:sz w:val="${r.size}"/><w:szCs w:val="${r.size}"/>` : ""}</w:rPr><w:t xml:space="preserve">${esc(
+              r.text,
+            )}</w:t></w:r>`,
+        )
+        .join("");
+      return `<w:p><w:pPr>${opts.bullet ? '<w:ind w:left="360"/>' : ""}${opts.after ? `<w:spacing w:after="${opts.after}"/>` : ""}</w:pPr>${body}</w:p>`;
+    };
+    const paras: string[] = [
+      p([{ text: data.name.toUpperCase(), bold: true, size: 32 }], { after: 80 }),
+      p([{ text: data.title, italic: true, size: 24 }], { after: 120 }),
+      p([{ text: contactLine, size: 20 }], { after: 240 }),
+    ];
+    paras.push(p([{ text: "PROFILE", bold: true, caps: true, size: 22 }], { after: 80 }));
+    paras.push(p([{ text: data.summary, size: 22 }], { after: 240 }));
+    paras.push(p([{ text: "EXPERIENCE", bold: true, caps: true, size: 22 }], { after: 80 }));
+    for (const e of data.experience) {
+      paras.push(
+        p([
+          { text: `${e.role} — ${e.company}${e.location ? ` · ${e.location}` : ""}`, bold: true, size: 22 },
+          { text: `  (${e.start}${e.end ? ` – ${e.end}` : ""})`, size: 22 },
+        ], { after: 40 }),
+      );
+      for (const b of e.bullets) paras.push(p([{ text: b, size: 22 }], { bullet: true, after: 40 }));
+      paras.push(p([{ text: "" }], { after: 80 }));
+    }
+    paras.push(p([{ text: "EDUCATION", bold: true, caps: true, size: 22 }], { after: 80 }));
+    for (const ed of data.education) {
+      paras.push(
+        p([
+          { text: `${ed.degree} — ${ed.school}`, bold: true, size: 22 },
+          { text: `  (${ed.start}${ed.end ? ` – ${ed.end}` : ""})`, size: 22 },
+        ], { after: 40 }),
+      );
+      if (ed.notes) paras.push(p([{ text: ed.notes, italic: true, size: 20 }], { after: 80 }));
+    }
+    paras.push(p([{ text: "SKILLS", bold: true, caps: true, size: 22 }], { after: 80 }));
+    paras.push(p([{ text: data.skills.join(", "), size: 22 }], { after: 240 }));
+    if (data.projects.length > 0) {
+      paras.push(p([{ text: "PROJECTS", bold: true, caps: true, size: 22 }], { after: 80 }));
+      for (const proj of data.projects) {
+        paras.push(
+          p([
+            { text: proj.name, bold: true, size: 22 },
+            { text: proj.link ? `  (${proj.link})` : "", size: 22 },
+          ], { after: 40 }),
+        );
+        paras.push(p([{ text: proj.description, size: 22 }], { bullet: true, after: 120 }));
+      }
+    }
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paras.join("")}<w:sectPr/></w:body></w:document>`;
+    const files: Record<string, Uint8Array> = {
+      "[Content_Types].xml": strToU8(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`,
+      ),
+      "_rels/.rels": strToU8(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,
+      ),
+      "word/document.xml": strToU8(documentXml),
+      "word/styles.xml": strToU8(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:style></w:styles>`,
+      ),
+    };
+    const zip = zipSync(files);
+    const blob = new Blob([zip], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    const a = document.createElement("a");
+    a.download = "fcuk-resume.docx";
+    a.href = URL.createObjectURL(blob);
+    a.click();
+  };
+
+  const exportPng = async () => {
+    const printRoot = document.querySelector(".resume-print-root");
+    const page = printRoot?.querySelector(".resume-print-page") as HTMLElement | null;
+    if (!page) return;
+    const clone = page.cloneNode(true) as HTMLElement;
+    clone.style.width = `${A4_W}px`;
+    clone.style.height = `${A4_H}px`;
+    clone.style.overflow = "hidden";
+    const holder = document.createElement("div");
+    holder.style.cssText = "position:fixed;left:-20000px;top:0;width:794px;height:1123px;background:#fff;";
+    holder.appendChild(clone);
+    document.body.appendChild(holder);
+    try {
+      await document.fonts.ready;
+      const xml = new XMLSerializer().serializeToString(clone);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${A4_W}" height="${A4_H}" viewBox="0 0 ${A4_W} ${A4_H}"><foreignObject x="0" y="0" width="${A4_W}" height="${A4_H}"><div xmlns="http://www.w3.org/1999/xhtml">${xml}</div></foreignObject></svg>`;
+      const blob = new Blob([svg], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("rasterize failed"));
+        img.src = url;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = A4_W;
+      canvas.height = A4_H;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "fcuk-resume.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    } finally {
+      holder.remove();
+    }
+  };
+
   const reset = () => {
     const d = FIELD_PRESETS[preset].data();
     setData(d);
@@ -1460,10 +1591,10 @@ export function ResumeBuilder() {
       title="The papers."
       tagline="Build a resume that exports to a clean PDF — no signup to download your own work. Templates for every field."
     >
-      <div className="mt-10 grid gap-6 xl:grid-cols-[380px_1fr]">
+      <div className="mt-10 grid gap-8 xl:grid-cols-[460px_1fr]">
         {/* ---- Editor ---- */}
-        <div className="order-2 max-h-[85vh] space-y-5 overflow-auto pr-1 xl:order-1">
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+        <div className="order-2 space-y-6 xl:order-1">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [01] Your field
               <Briefcase className="h-4 w-4" aria-hidden="true" />
@@ -1488,40 +1619,57 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [02] Template
               <FileText className="h-4 w-4" aria-hidden="true" />
             </h2>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 space-y-2.5">
               {TEMPLATES.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setTemplateId(t.id)}
                   className={cn(
-                    "rounded-md border-2 border-ink p-2.5 text-left transition-[background-color,shadow] duration-200 ease-brutal",
+                    "flex w-full items-center gap-3 rounded-md border-2 border-ink p-3 text-left transition-[background-color,shadow] duration-200 ease-brutal",
                     templateId === t.id ? "bg-yellow shadow-brutal-sm" : "bg-surface-muted hover:bg-yellow/30",
                   )}
                 >
-                  <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-ink">{t.name}</p>
-                  <p className="mt-0.5 font-mono text-[9px] leading-snug text-ink/60">{t.desc}</p>
-                  <p className="mt-1.5 font-mono text-[9px] font-semibold text-ink/50">
-                    {t.fonts.display} / {t.fonts.body}
-                    {t.photo !== "none" && (
-                      <span className="ml-1.5 rounded-sm border-2 border-ink bg-yellow px-1 font-bold text-ink">
-                        PHOTO
-                      </span>
+                  <span className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-ink">{t.name}</p>
+                    <p className="mt-0.5 font-mono text-[9px] leading-snug text-ink/60">{t.desc}</p>
+                    <p className="mt-1.5 font-mono text-[9px] font-semibold text-ink/50">
+                      {t.fonts.display} / {t.fonts.body}
+                    </p>
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "h-3 w-3 shrink-0 rounded-full border-2 border-ink",
+                      templateId === t.id ? "bg-ink" : "bg-surface",
                     )}
-                  </p>
+                  />
                 </button>
               ))}
             </div>
+            {templateId === "editorial" && (
+              <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={data.showCvKicker ?? true}
+                  onChange={(e) => set({ showCvKicker: e.target.checked })}
+                  className="h-3.5 w-3.5 cursor-pointer accent-yellow"
+                />
+                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
+                  Show "Curriculum Vitae" label at the top
+                </span>
+              </label>
+            )}
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[03] Contact</h2>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <Field label="Full name" value={data.name} onChange={(v) => set({ name: v })} />
               <Field label="Title" value={data.title} onChange={(v) => set({ title: v })} />
               <Field label="Email" value={data.email} onChange={(v) => set({ email: v })} />
@@ -1595,13 +1743,12 @@ export function ResumeBuilder() {
                 </button>
               )}
               <p className="mt-2 font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/40">
-                Optional — shows on Editorial, Modern, Brutalist, Magazine and Badge templates. Cropped to 512px
-                on upload, kept on-device.
+                Optional — shows on the Brutalist template only. Cropped to 512px on upload, kept on-device.
               </p>
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [04] Experience
               <button type="button" onClick={() => set({ experience: [...data.experience, { company: "", role: "", location: "", start: "", end: "", bullets: [] }] })}
@@ -1611,7 +1758,7 @@ export function ResumeBuilder() {
             </h2>
             <div className="mt-3 space-y-4">
               {data.experience.map((e, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
                   <div className="flex items-center justify-between">
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">#{i + 1}</p>
                     <button type="button" onClick={() => set({ experience: data.experience.filter((_, j) => j !== i) })}
@@ -1619,11 +1766,11 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-2 gap-3">
                     <Field label="Role" value={e.role} onChange={(v) => setExp(i, { role: v })} />
                     <Field label="Company" value={e.company} onChange={(v) => setExp(i, { company: v })} />
                     <Field label="Location" value={e.location} onChange={(v) => setExp(i, { location: v })} />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="Start" value={e.start} onChange={(v) => setExp(i, { start: v })} />
                       <Field label="End" value={e.end} onChange={(v) => setExp(i, { end: v })} />
                     </div>
@@ -1644,7 +1791,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [05] Education
               <button type="button" onClick={() => set({ education: [...data.education, { school: "", degree: "", location: "", start: "", end: "", notes: "" }] })}
@@ -1654,7 +1801,7 @@ export function ResumeBuilder() {
             </h2>
             <div className="mt-3 space-y-4">
               {data.education.map((ed, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
                   <div className="flex items-center justify-between">
                     <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
                       <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" /> #{i + 1}
@@ -1664,11 +1811,11 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-2 gap-3">
                     <Field label="Degree" value={ed.degree} onChange={(v) => setEdu(i, { degree: v })} />
                     <Field label="School" value={ed.school} onChange={(v) => setEdu(i, { school: v })} />
                     <Field label="Location" value={ed.location} onChange={(v) => setEdu(i, { location: v })} />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="Start" value={ed.start} onChange={(v) => setEdu(i, { start: v })} />
                       <Field label="End" value={ed.end} onChange={(v) => setEdu(i, { end: v })} />
                     </div>
@@ -1681,7 +1828,7 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [06] Skills
               <Wrench className="h-4 w-4" aria-hidden="true" />
@@ -1698,7 +1845,7 @@ export function ResumeBuilder() {
             </label>
           </section>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
               [07] Projects / selected work
               <button type="button" onClick={() => set({ projects: [...data.projects, { name: "", link: "", description: "" }] })}
@@ -1708,7 +1855,7 @@ export function ResumeBuilder() {
             </h2>
             <div className="mt-3 space-y-3">
               {data.projects.map((p, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
                   <div className="flex items-center justify-between">
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">#{i + 1}</p>
                     <button type="button" onClick={() => set({ projects: data.projects.filter((_, j) => j !== i) })}
@@ -1716,7 +1863,7 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-2 gap-3">
                     <Field label="Name" value={p.name} onChange={(v) => setProj(i, { name: v })} />
                     <Field label="Link" value={p.link} onChange={(v) => setProj(i, { link: v })} />
                   </div>
@@ -1728,18 +1875,27 @@ export function ResumeBuilder() {
             </div>
           </section>
 
-          <div className="flex gap-2">
-            <Button onClick={print} size="md" className="flex-1 uppercase">
-              <Printer className="h-4 w-4" aria-hidden="true" /> Print / Save PDF
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={print} size="md" className="min-w-40 flex-1 uppercase">
+              <Printer className="h-4 w-4" aria-hidden="true" /> Save as PDF
             </Button>
-            <Button variant="secondary" onClick={reset} className="uppercase">
+            <Button variant="secondary" size="md" onClick={exportTxt} className="uppercase">
+              <FileText className="h-4 w-4" aria-hidden="true" /> .TXT
+            </Button>
+            <Button variant="secondary" size="md" onClick={() => void exportDocx()} className="uppercase">
+              <FileDown className="h-4 w-4" aria-hidden="true" /> .DOCX
+            </Button>
+            <Button variant="secondary" size="md" onClick={() => void exportPng()} className="uppercase">
+              <FileImage className="h-4 w-4" aria-hidden="true" /> .PNG
+            </Button>
+            <Button variant="secondary" size="md" onClick={reset} className="ml-auto uppercase">
               <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset
             </Button>
           </div>
         </div>
 
         {/* ---- Preview ---- */}
-        <div className="order-1 xl:order-2">
+        <div className="order-1 self-start xl:sticky xl:top-24 xl:order-2">
           <div className="flex items-center justify-between rounded-t-lg border-[3px] border-ink bg-ink px-4 py-2.5">
             <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-paper">
               [08] Live preview — {template.name} template
@@ -1776,7 +1932,7 @@ export function ResumeBuilder() {
       </div>
 
       <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-        Everything stays in your tab. "Save as PDF" in the print dialog — your work is yours, no download wall.
+        Everything stays in your tab — PDF, TXT, DOCX and PNG export. Your work is yours, no download wall.
       </p>
     </ToolShell>
   );
