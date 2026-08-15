@@ -1728,15 +1728,6 @@ export function ResumeBuilder() {
     setTemplateId(FIELD_PRESETS[preset].template as TemplateId);
   };
 
-  const estimatedLines = useMemo(() => {
-    let lines = 4 + data.summary.split("\n").length;
-    for (const e of data.experience) lines += 3 + e.bullets.length;
-    lines += data.education.length * 2 + 2;
-    lines += data.skills.length / 3;
-    lines += data.projects.length * 2;
-    return lines;
-  }, [data]);
-
   return (
     <ToolShell
       fill
@@ -1744,62 +1735,62 @@ export function ResumeBuilder() {
       title="The papers."
       tagline="Build on the left, inspect on the right."
     >
-      <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)]">
+      <div className="grid gap-3 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)]">
         {/* ---- Editor pane ---- */}
         <div className="max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
           <div className="space-y-3 p-3">
           <EditorSection
             icon={<Briefcase className="h-4 w-4" aria-hidden="true" />}
-            title="[01] Your field"
+            title="[01] Field & template"
             open={openSections.field ?? true}
             onToggle={() => toggleSection("field")}
           >
             <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
-              Picks the sample content, sections and a matching template
+              Presets pick sample content, sections and a matching template
             </p>
-            <div className="relative mt-2.5">
-              <select
-                value={preset}
-                onChange={(e) => applyPreset(e.target.value as FieldPresetId)}
-                className={selectClass}
-                aria-label="Your field"
-              >
-                {(Object.keys(FIELD_PRESETS) as FieldPresetId[]).map((p) => (
-                  <option key={p} value={p}>
-                    {FIELD_PRESETS[p].label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
-              />
-            </div>
-          </EditorSection>
-
-          <EditorSection
-            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
-            title="[02] Template"
-            open={openSections.template ?? true}
-            onToggle={() => toggleSection("template")}
-          >
-            <div className="relative">
-              <select
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value as TemplateId)}
-                className={selectClass}
-                aria-label="Template"
-              >
-                {TEMPLATES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} — {t.desc}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
-              />
+            <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+              <label className="block">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">Field</span>
+                <div className="relative mt-0.5">
+                  <select
+                    value={preset}
+                    onChange={(e) => applyPreset(e.target.value as FieldPresetId)}
+                    className={selectClass}
+                    aria-label="Your field"
+                  >
+                    {(Object.keys(FIELD_PRESETS) as FieldPresetId[]).map((p) => (
+                      <option key={p} value={p}>
+                        {FIELD_PRESETS[p].label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
+                  />
+                </div>
+              </label>
+              <label className="block">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">Template</span>
+                <div className="relative mt-0.5">
+                  <select
+                    value={templateId}
+                    onChange={(e) => setTemplateId(e.target.value as TemplateId)}
+                    className={selectClass}
+                    aria-label="Template"
+                  >
+                    {TEMPLATES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} — {t.desc}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
+                  />
+                </div>
+              </label>
             </div>
             <div className="mt-3.5">
               <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
@@ -1853,7 +1844,7 @@ export function ResumeBuilder() {
 
           <EditorSection
             icon={<Mail className="h-4 w-4" aria-hidden="true" />}
-            title="[03] Contact"
+            title="[02] Contact"
             open={openSections.contact ?? true}
             onToggle={() => toggleSection("contact")}
           >
@@ -1940,7 +1931,7 @@ export function ResumeBuilder() {
 
           <EditorSection
             icon={<ClipboardList className="h-4 w-4" aria-hidden="true" />}
-            title="[04] Experience"
+            title="[03] Experience"
             count={data.experience.length}
             right={
               <button
@@ -1993,7 +1984,7 @@ export function ResumeBuilder() {
 
           <EditorSection
             icon={<GraduationCap className="h-4 w-4" aria-hidden="true" />}
-            title="[05] Education"
+            title="[04] Education"
             count={data.education.length}
             right={
               <button
@@ -2038,7 +2029,7 @@ export function ResumeBuilder() {
 
           <EditorSection
             icon={<Wrench className="h-4 w-4" aria-hidden="true" />}
-            title="[06] Skills"
+            title="[05] Skills"
             count={data.skills.length}
             open={openSections.skills ?? false}
             onToggle={() => toggleSection("skills")}
@@ -2057,7 +2048,7 @@ export function ResumeBuilder() {
 
           <EditorSection
             icon={<FolderGit2 className="h-4 w-4" aria-hidden="true" />}
-            title="[07] Projects / selected work"
+            title="[06] Projects / selected work"
             count={data.projects.length}
             right={
               <button
@@ -2105,17 +2096,19 @@ export function ResumeBuilder() {
         </div>
 
         {/* ---- Preview pane ---- */}
-        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none lg:w-[min(100%,calc((100dvh-13.1rem)*0.707+2.7rem))]">
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-3 py-1.5">
-            <p className="truncate font-mono text-[10px] font-bold uppercase tracking-widest text-paper">
-              [08] Live preview — {template.name}
+        {/* Column width derives from the A4 1:1.414 ratio at the scale that fills the
+            remaining viewport height — the page renders exactly resume-sized, flush right. */}
+        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none lg:w-[min(100%,calc((100dvh-9.6rem)*0.707+2.7rem))]">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-2.5 py-1">
+            <p className="truncate font-mono text-[9px] font-bold uppercase tracking-widest text-paper">
+              Live preview — {template.name}
             </p>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
               <div className="flex items-center rounded-md border-2 border-paper/40">
                 <button
                   type="button"
                   onClick={() => stepZoom(-0.25)}
-                  className="px-2 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
+                  className="px-1.5 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
                   aria-label="Zoom out"
                 >
                   −
@@ -2124,7 +2117,7 @@ export function ResumeBuilder() {
                   type="button"
                   onClick={clickFit}
                   className={cn(
-                    "min-w-12 px-1 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ease-brutal",
+                    "min-w-10 px-1 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ease-brutal",
                     fit ? "text-yellow" : "text-paper hover:text-yellow",
                   )}
                   aria-label="Fit preview to screen"
@@ -2134,7 +2127,7 @@ export function ResumeBuilder() {
                 <button
                   type="button"
                   onClick={() => stepZoom(0.25)}
-                  className="px-2 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
+                  className="px-1.5 py-0.5 font-mono text-sm font-bold text-paper transition-colors duration-200 ease-brutal hover:text-yellow"
                   aria-label="Zoom in"
                 >
                   +
@@ -2195,15 +2188,6 @@ export function ResumeBuilder() {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-[3px] border-ink bg-surface px-3 py-1.5">
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/40">
-              ~{estimatedLines} lines · {A4_W}×{A4_H}px · exports stay in your tab
-            </p>
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
-              {fit ? "Fits preview width" : `${Math.round(scale * 100)}% of full size`}
-            </p>
           </div>
         </div>
       </div>

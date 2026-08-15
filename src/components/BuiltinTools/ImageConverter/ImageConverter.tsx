@@ -402,7 +402,7 @@ setTraceRes("auto");
   }
 
   return (
-    <main className="py-12" id="main-content">
+    <main className="py-6" id="main-content">
       <div className="page-container">
         <a
           href="#/tools"

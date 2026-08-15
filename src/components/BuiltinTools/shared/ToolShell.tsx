@@ -11,9 +11,9 @@ interface ToolShellProps {
 }
 
 export function ToolShell({ crumb, title, tagline, note, children, fill }: ToolShellProps) {
-  if (fill) {
+  if (fill !== false) {
     return (
-      <main className="flex h-[calc(100dvh-5.5rem)] min-h-[34rem] flex-col overflow-hidden" id="main-content">
+      <main className="flex h-[calc(100dvh-3.75rem)] min-h-[32rem] flex-col overflow-hidden" id="main-content">
         <div className="shrink-0 px-6 lg:px-10">
           <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
             <div>
@@ -34,12 +34,12 @@ export function ToolShell({ crumb, title, tagline, note, children, fill }: ToolS
             <p className="max-w-lg text-[13px] font-medium text-ink/80">{tagline}</p>
           </div>
         </div>
-        <div className="min-h-0 flex-1 px-6 pt-4 pb-4 lg:px-10">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 lg:px-10">{children}</div>
       </main>
     );
   }
   return (
-    <main className="py-12" id="main-content">
+    <main className="py-8" id="main-content">
       <div className="page-container">
         <a
           href="#/tools"

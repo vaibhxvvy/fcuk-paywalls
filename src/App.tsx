@@ -103,7 +103,7 @@ export default function App() {
         )}
 
         <ScrollToTopButton />
-        <Footer />
+        {view !== "tools" && <Footer />}
       </ModalProvider>
     </div>
   );

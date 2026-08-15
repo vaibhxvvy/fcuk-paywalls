@@ -113,7 +113,7 @@ export function SvgViewer() {
   const previewWidth = meta?.width ? meta.width * zoom : 320 * zoom;
 
   return (
-    <main className="py-12" id="main-content">
+    <main className="py-6" id="main-content">
       <div className="page-container">
         <a
           href="#/tools"
