@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Eye, FileDown, Plus, Receipt, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Eye, FileDown, Maximize2, Plus, Receipt, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
 
@@ -14,9 +14,12 @@ type TemplateId = "brutal" | "minimal" | "classic";
 
 const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
   { id: "brutal", name: "Brutal", desc: "Black band, thick rules, mono numbers." },
-  { id: "minimal", name: "Minimal", desc: "Light rules, lots of whitespace, small caps." },
+  { id: "minimal", name: "Minimal", desc: "Light rules, whitespace, small caps." },
   { id: "classic", name: "Classic", desc: "Serif type, double rules, centered header." },
 ];
+
+const A4_W = 595;
+const A4_H = 842;
 
 let nextId = 1;
 
@@ -37,8 +40,7 @@ const CHAR_MAP: Record<string, string> = {
   "×": "x",
   "·": ".",
   "•": "*",
-  "\n": " ",
-  "\r": " ",
+  "\r": "",
   "\t": " ",
 };
 
@@ -51,10 +53,13 @@ const sanitize = (s: string) =>
 export function InvoiceGenerator() {
   const [fromName, setFromName] = useState("");
   const [fromEmail, setFromEmail] = useState("");
+  const [fromAddress, setFromAddress] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
   const [number, setNumber] = useState("INV-001");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState("");
   const [currency, setCurrency] = useState("$");
   const [taxPct, setTaxPct] = useState("0");
   const [discountPct, setDiscountPct] = useState("0");
@@ -65,8 +70,32 @@ export function InvoiceGenerator() {
   ]);
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth - 24;
+      const h = el.clientHeight - 24;
+      setScale(Math.min(1, Math.max(0.15, Math.min(w / A4_W, h / A4_H))));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const stepZoom = (d: number) =>
+    setScale((s) => Math.min(1.5, Math.max(0.25, Math.round((s + d) * 100) / 100)));
+
+  const clickFit = () => {
+    const el = previewRef.current;
+    if (el)
+      setScale(Math.min(1, Math.max(0.15, Math.min((el.clientWidth - 24) / A4_W, (el.clientHeight - 24) / A4_H))));
+  };
 
   const subtotal = useMemo(
     () => items.reduce((s, it) => s + (parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0), 0),
@@ -117,12 +146,29 @@ export function InvoiceGenerator() {
     const num = sanitize(number.trim() || "INV-001");
     const sFrom = sanitize(fromName).trim() || "Your company";
     const sFromEmail = sanitize(fromEmail).trim();
+    const sFromAddr = sanitize(fromAddress).split("\n").slice(0, 3);
     const sClient = sanitize(clientName).trim() || "Client";
     const sClientEmail = sanitize(clientEmail).trim();
+    const sClientAddr = sanitize(clientAddress).split("\n").slice(0, 3);
     const sNotes = sanitize(notes).trim();
 
     const right = (text: string, size: number, f: typeof mono, x: number, y: number, color = ink) =>
       page.drawText(text, { x: x - f.widthOfTextAtSize(text, size), y, size, font: f, color });
+
+    const fitRight = (
+      text: string,
+      size: number,
+      f: typeof mono,
+      rightX: number,
+      y: number,
+      maxW: number,
+      color = ink,
+    ) => {
+      let s = size;
+      let t = text;
+      while (s > 6 && f.widthOfTextAtSize(t, s) > maxW) s -= 0.5;
+      page.drawText(t, { x: rightX - f.widthOfTextAtSize(t, s), y, size: s, font: f, color });
+    };
 
     if (template === "minimal") {
       page.drawText("INVOICE", { x: M, y: 736, size: 9, font: helv, color: midGray });
@@ -132,14 +178,19 @@ export function InvoiceGenerator() {
       page.drawText("FROM", { x: M, y: 696, size: 8, font: helvB, color: midGray });
       page.drawText(sFrom.toUpperCase(), { x: M, y: 682, size: 13, font: helvB, color: ink });
       if (sFromEmail) page.drawText(sFromEmail, { x: M, y: 668, size: 9, font: helv, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: 654 - i * 12, size: 8, font: helv, color: gray }));
 
       const cx = M + W * 0.55;
-      page.drawText("BILL TO", { x: cx, y: 696, size: 8, font: helvB, color: midGray });
-      page.drawText(sClient.toUpperCase(), { x: cx, y: 682, size: 11, font: helvB, color: ink });
-      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: 668, size: 9, font: helv, color: gray });
-      page.drawText(`DATE  ${date}`, { x: cx, y: 654, size: 9, font: mono, color: gray });
+      const cTop = 696 - sFromAddr.length * 12;
+      page.drawText("BILL TO", { x: cx, y: cTop, size: 8, font: helvB, color: midGray });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 11, font: helvB, color: ink });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: gray });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: gray }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
 
-      const headY = 616;
+      const headY = Math.min(616, dueY - 16);
       page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: midGray });
       page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: midGray });
       page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: midGray });
@@ -149,9 +200,9 @@ export function InvoiceGenerator() {
       let rowY = headY - 26;
       for (const it of visible) {
         page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
-        right(it.qty, 10, mono, M + W * 0.72, rowY);
-        right(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY);
-        right(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY);
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
         page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.5, color: midGray });
         rowY -= 22;
       }
@@ -222,12 +273,17 @@ export function InvoiceGenerator() {
       page.drawLine({ start: { x: cx, y: 648 }, end: { x: M + W, y: 648 }, thickness: 0.5, color: gray });
       page.drawText(sFrom, { x: M, y: 634, size: 10, font: times, color: ink });
       if (sFromEmail) page.drawText(sFromEmail, { x: M, y: 621, size: 8, font: times, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: 609 - i * 11, size: 8, font: times, color: gray }));
       page.drawText(sClient, { x: cx, y: 634, size: 10, font: times, color: ink });
       if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: 621, size: 8, font: times, color: gray });
-      page.drawText(`DATE  ${date}`, { x: M, y: 598, size: 9, font: times, color: ink });
-      page.drawText(`NUMBER  ${num}`, { x: cx, y: 598, size: 9, font: times, color: ink });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: 609 - i * 11, size: 8, font: times, color: gray }));
+      const metaY = 598 - Math.max(sFromAddr.length, sClientAddr.length) * 11;
+      page.drawText(`DATE  ${date}`, { x: M, y: metaY, size: 9, font: times, color: ink });
+      page.drawText(`NUMBER  ${num}`, { x: cx, y: metaY, size: 9, font: times, color: ink });
+      if (dueDate.trim())
+        page.drawText(`DUE  ${sanitize(dueDate)}`, { x: M, y: metaY - 12, size: 9, font: times, color: ink });
 
-      const headY = 564;
+      const headY = Math.min(564, metaY - 22);
       page.drawText("DESCRIPTION", { x: M, y: headY, size: 9, font: timesB, color: ink });
       page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 9, font: timesB, color: ink });
       page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 9, font: timesB, color: ink });
@@ -238,9 +294,9 @@ export function InvoiceGenerator() {
       let rowY = headY - 32;
       for (const it of visible) {
         page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: times, color: ink, maxWidth: W * 0.56 });
-        right(it.qty, 10, times, M + W * 0.72, rowY);
-        right(pm(parseFloat(it.rate) || 0), 10, times, M + W * 0.9, rowY);
-        right(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, timesB, M + W, rowY);
+        fitRight(it.qty, 10, times, M + W * 0.72, rowY, W * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, times, M + W * 0.9, rowY, W * 0.18);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, timesB, M + W, rowY, W * 0.1);
         page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.4, color: midGray });
         rowY -= 22;
       }
@@ -291,14 +347,19 @@ export function InvoiceGenerator() {
       let y = 792 - 76 - 30;
       page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: ink });
       if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: y - 27 - i * 12, size: 8, font: helv, color: gray }));
 
       const cx = M + W * 0.55;
-      page.drawText("TO", { x: cx, y, size: 9, font: helvB, color: gray });
-      page.drawText(sClient.toUpperCase(), { x: cx, y: y - 14, size: 10, font: helvB, color: ink });
-      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: y - 26, size: 9, font: helv, color: gray });
-      page.drawText(`DATE  ${date}`, { x: cx, y: y - 38, size: 9, font: mono, color: gray });
+      const cTop = y - sFromAddr.length * 12;
+      page.drawText("TO", { x: cx, y: cTop, size: 9, font: helvB, color: gray });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: ink });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: gray });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: gray }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
 
-      const headY = y - 74;
+      const headY = Math.min(y - 74, dueY - 20);
       page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: gray });
       page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: gray });
       page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: gray });
@@ -308,9 +369,9 @@ export function InvoiceGenerator() {
       let rowY = headY - 26;
       for (const it of visible) {
         page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
-        right(it.qty, 10, mono, M + W * 0.72, rowY);
-        right(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY);
-        right(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY);
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
         page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.5, color: gray });
         rowY -= 22;
       }
@@ -352,34 +413,6 @@ export function InvoiceGenerator() {
     return new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" });
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!hasContent) {
-      setPreviewUrl((p) => {
-        if (p) URL.revokeObjectURL(p);
-        return null;
-      });
-      return;
-    }
-    setPreviewError(null);
-    const t = setTimeout(async () => {
-      try {
-        const blob = await buildPdf();
-        if (cancelled) return;
-        setPreviewUrl((p) => {
-          if (p) URL.revokeObjectURL(p);
-          return URL.createObjectURL(blob);
-        });
-      } catch (e) {
-        if (!cancelled) setPreviewError(e instanceof Error ? e.message : "Preview failed");
-      }
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [items, fromName, fromEmail, clientName, clientEmail, number, date, currency, taxPct, discountPct, notes, template, hasContent]);
-
   const onExport = async () => {
     if (!hasContent) return;
     setStatus("working");
@@ -399,6 +432,8 @@ export function InvoiceGenerator() {
     }
   };
 
+  const cols = "grid grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] items-center gap-2";
+
   return (
     <ToolShell
       crumb="INVOICE-GENERATOR"
@@ -406,139 +441,230 @@ export function InvoiceGenerator() {
       tagline="Line items, tax, discount, notes — a clean brutalist invoice PDF straight from your tab. Invoice Simple counts your 3 free ones; this one doesn't."
     >
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
-          <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-            [01] Details
-            <Receipt className="h-4 w-4" aria-hidden="true" />
-          </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">From</span>
-              <input className={inputCls} value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Your company" />
-            </label>
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Your email</span>
-              <input className={inputCls} value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="you@company.com" />
-            </label>
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Bill to</span>
-              <input className={inputCls} value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" />
-            </label>
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Client email</span>
-              <input className={inputCls} value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@their-company.com" />
-            </label>
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Invoice no.</span>
-              <input className={inputCls} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="INV-001" />
-            </label>
-            <label className="block">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Date</span>
-              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-            </label>
-          </div>
-
-          <h3 className="mt-5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
-            Line items
-          </h3>
-          <div className="mt-2 space-y-2">
-            {items.map((it, i) => (
-              <div key={it.id} className="flex items-center gap-2">
-                <span className="w-5 shrink-0 font-mono text-[10px] font-bold text-ink/40">{i + 1}</span>
-                <input
-                  className="min-w-0 flex-1 rounded-md border-2 border-ink bg-surface-muted px-2.5 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
-                  value={it.desc}
-                  onChange={(e) => setItem(it.id, { desc: e.target.value })}
-                  placeholder="What they're paying for"
-                />
-                <input
-                  className="w-16 rounded-md border-2 border-ink bg-surface-muted px-2 py-2 text-center font-mono text-xs text-ink outline-none focus:border-yellow"
-                  value={it.qty}
-                  onChange={(e) => setItem(it.id, { qty: e.target.value })}
-                  placeholder="Qty"
-                  title="Quantity"
-                />
-                <input
-                  className="w-24 rounded-md border-2 border-ink bg-surface-muted px-2 py-2 text-right font-mono text-xs text-ink outline-none focus:border-yellow"
-                  value={it.rate}
-                  onChange={(e) => setItem(it.id, { rate: e.target.value })}
-                  placeholder="Rate"
-                  title="Rate"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeItem(it.id)}
-                  disabled={items.length === 1}
-                  className="rounded-md border-2 border-ink p-1.5 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-red disabled:cursor-not-allowed disabled:opacity-30"
-                  title="Remove row"
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={addItem}
-            className="mt-3 flex items-center gap-1.5 rounded-md border-2 border-dashed border-ink/60 bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted"
-          >
-            <Plus className="h-3 w-3" aria-hidden="true" />
-            Add item
-          </button>
-        </section>
-
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [02] Preview & template
-              <Eye className="h-4 w-4" aria-hidden="true" />
+              [01] Details
+              <Receipt className="h-4 w-4" aria-hidden="true" />
             </h2>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTemplate(t.id)}
-                  className={
-                    t.id === template
-                      ? "rounded-md border-2 border-ink bg-ink px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-paper"
-                      : "rounded-md border-2 border-ink bg-surface-muted px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
-                  }
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/40">
-              {TEMPLATES.find((t) => t.id === template)?.desc}
-            </p>
-            {previewUrl ? (
-              <iframe
-                title="Live invoice preview"
-                src={previewUrl}
-                className="mt-4 h-96 w-full rounded-md border-2 border-ink bg-paper"
-              />
-            ) : (
-              <div className="mt-4 flex h-96 items-center justify-center rounded-md border-2 border-dashed border-ink/30 p-6">
-                <p className="text-center font-mono text-xs font-bold uppercase tracking-widest text-ink/30">
-                  Live preview appears here
-                  <br />
-                  <span className="text-[10px] font-semibold">
-                    as soon as you add a line item — it re-renders as you type, like the paywalled apps minus the paywall
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-3">
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                    Your company
                   </span>
-                </p>
+                  <input className={inputCls} value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Company name" />
+                </label>
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Email</span>
+                  <input className={inputCls} value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="you@company.com" />
+                </label>
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Address</span>
+                  <textarea
+                    className="mt-1 h-16 w-full resize-none rounded-md border-2 border-ink bg-surface-muted p-2.5 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
+                    value={fromAddress}
+                    onChange={(e) => setFromAddress(e.target.value)}
+                    placeholder={"Street, city\nCountry, ZIP"}
+                  />
+                </label>
               </div>
-            )}
-            {previewError && (
-              <p className="mt-3 rounded-md border-2 border-ink bg-red/20 px-3 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink">
-                [ PREVIEW ERROR ] {previewError}
-              </p>
-            )}
+              <div className="flex flex-col gap-3">
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                    Bill to
+                  </span>
+                  <input className={inputCls} value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client company" />
+                </label>
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Client email</span>
+                  <input className={inputCls} value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@their-company.com" />
+                </label>
+                <label className="block">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Client address</span>
+                  <textarea
+                    className="mt-1 h-16 w-full resize-none rounded-md border-2 border-ink bg-surface-muted p-2.5 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
+                    value={clientAddress}
+                    onChange={(e) => setClientAddress(e.target.value)}
+                    placeholder={"Street, city\nCountry, ZIP"}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Invoice no.</span>
+                <input className={inputCls} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="INV-001" />
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Date</span>
+                <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Due date</span>
+                <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </label>
+            </div>
           </section>
 
           <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [03] Totals & export
+              [02] Line items
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </h2>
+            <div className={`${cols} mt-4 border-b-2 border-ink/20 pb-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50`}>
+              <span>Description</span>
+              <span className="text-right">Qty</span>
+              <span className="text-right">Rate</span>
+              <span className="text-right">Amount</span>
+            </div>
+            <div className="mt-2 space-y-2 overflow-x-auto">
+              {items.map((it, i) => (
+                <div key={it.id} className={cols}>
+                  <input
+                    className="min-w-0 rounded-md border-2 border-ink bg-surface-muted px-2.5 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
+                    value={it.desc}
+                    onChange={(e) => setItem(it.id, { desc: e.target.value })}
+                    placeholder={`Item ${i + 1} — what they're paying for`}
+                  />
+                  <input
+                    className="w-full rounded-md border-2 border-ink bg-surface-muted px-1.5 py-2 text-right font-mono text-xs text-ink outline-none focus:border-yellow"
+                    value={it.qty}
+                    onChange={(e) => setItem(it.id, { qty: e.target.value })}
+                    placeholder="Qty"
+                    title="Quantity"
+                  />
+                  <input
+                    className="w-full rounded-md border-2 border-ink bg-surface-muted px-1.5 py-2 text-right font-mono text-xs text-ink outline-none focus:border-yellow"
+                    value={it.rate}
+                    onChange={(e) => setItem(it.id, { rate: e.target.value })}
+                    placeholder="Rate"
+                    title="Rate"
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="truncate font-mono text-xs font-bold text-ink/70">
+                      {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(it.id)}
+                      disabled={items.length === 1}
+                      className="shrink-0 rounded-md border-2 border-ink p-1.5 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-red disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Remove row"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addItem}
+              className="mt-3 flex items-center gap-1.5 rounded-md border-2 border-dashed border-ink/60 bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted"
+            >
+              <Plus className="h-3 w-3" aria-hidden="true" />
+              Add item
+            </button>
+          </section>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
+                [03] Preview
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              </h2>
+              <div className="ml-auto flex items-center gap-1.5">
+                {TEMPLATES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTemplate(t.id)}
+                    title={t.desc}
+                    className={
+                      t.id === template
+                        ? "rounded-md border-2 border-ink bg-ink px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-paper"
+                        : "rounded-md border-2 border-ink bg-surface-muted px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
+                    }
+                  >
+                    {t.name}
+                  </button>
+                ))}
+                <span className="mx-1 h-5 w-px bg-ink/20" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={clickFit}
+                  title="Fit to screen"
+                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepZoom(-0.1)}
+                  title="Zoom out"
+                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepZoom(0.1)}
+                  title="Zoom in"
+                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              ref={previewRef}
+              className="mt-4 h-[58dvh] min-h-[26rem] overflow-auto rounded-md border-2 border-ink bg-surface-muted"
+            >
+              <div className="flex min-h-full min-w-full p-3">
+                <div
+                  className="m-auto shrink-0 overflow-hidden rounded-sm shadow-brutal-md"
+                  style={{
+                    width: A4_W * scale,
+                    height: A4_H * scale,
+                    background: "#fff",
+                  }}
+                >
+                  <div className="origin-top-left" style={{ transform: `scale(${scale})`, width: A4_W, height: A4_H }}>
+                    <PreviewPage
+                      template={template}
+                      fromName={fromName}
+                      fromEmail={fromEmail}
+                      fromAddress={fromAddress}
+                      clientName={clientName}
+                      clientEmail={clientEmail}
+                      clientAddress={clientAddress}
+                      number={number}
+                      date={date}
+                      dueDate={dueDate}
+                      currency={currency}
+                      taxPct={taxPct}
+                      discountPct={discountPct}
+                      notes={notes}
+                      items={items}
+                      subtotal={subtotal}
+                      discount={discount}
+                      tax={tax}
+                      total={total}
+                      money={money}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+            <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
+              [04] Totals & export
               <FileDown className="h-4 w-4" aria-hidden="true" />
             </h2>
 
@@ -574,18 +700,12 @@ export function InvoiceGenerator() {
             <label className="mt-4 block">
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Notes</span>
               <textarea
-                className="mt-1 h-24 w-full resize-y rounded-md border-2 border-ink bg-surface-muted p-2.5 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
+                className="mt-1 h-20 w-full resize-y rounded-md border-2 border-ink bg-surface-muted p-2.5 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Payment terms, thank-you, whatever — it goes on the PDF"
               />
             </label>
-
-            <div className="mt-4 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted p-3 font-mono text-[10px] font-semibold uppercase leading-relaxed tracking-widest text-ink/60">
-              {items.length} row{items.length === 1 ? "" : "s"} · subtotal {money(subtotal)}
-              {discount > 0 ? ` · −${money(discount)}` : ""}
-              {tax > 0 ? ` · ${money(tax)} tax` : ""}
-            </div>
 
             <Button onClick={onExport} disabled={!hasContent || status === "working"} className="mt-4 w-full uppercase">
               <FileDown className="h-4 w-4" aria-hidden="true" />
@@ -609,5 +729,323 @@ export function InvoiceGenerator() {
         Generated locally with pdf-lib — the invoice service with no 3-invoices-a-month meter.
       </p>
     </ToolShell>
+  );
+}
+
+interface PreviewProps {
+  template: TemplateId;
+  fromName: string;
+  fromEmail: string;
+  fromAddress: string;
+  clientName: string;
+  clientEmail: string;
+  clientAddress: string;
+  number: string;
+  date: string;
+  dueDate: string;
+  currency: string;
+  taxPct: string;
+  discountPct: string;
+  notes: string;
+  items: LineItem[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  money: (v: number) => string;
+}
+
+function PreviewPage(props: PreviewProps) {
+  const {
+    template,
+    fromName,
+    fromEmail,
+    fromAddress,
+    clientName,
+    clientEmail,
+    clientAddress,
+    number,
+    date,
+    dueDate,
+    taxPct,
+    discountPct,
+    notes,
+    items,
+    money,
+  } = props;
+
+  const visible = items.filter((it) => it.desc.trim() || it.qty || it.rate).slice(0, 12);
+  const addrLines = (a: string) => a.split("\n").slice(0, 3).filter(Boolean);
+  const sFrom = fromName.trim() || "Your company";
+  const sClient = clientName.trim() || "Client";
+
+  if (template === "minimal") {
+    return (
+      <div className="flex h-full w-full flex-col bg-white px-14 pb-10 pt-10 font-mono text-ink">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-ink/40">Invoice</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
+            {number.trim() || "INV-001"}
+          </span>
+        </div>
+        <div className="mt-2 border-t border-ink/30" />
+        <p className="mt-5 text-2xl font-bold uppercase leading-none">{sFrom}</p>
+        {fromEmail.trim() && <p className="mt-1.5 text-[11px] text-ink/50">{fromEmail}</p>}
+        {addrLines(fromAddress).map((l) => (
+          <p key={l} className="text-[10px] leading-relaxed text-ink/50">{l}</p>
+        ))}
+        <div className="mt-6 flex justify-between gap-8">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/40">Bill to</p>
+            <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+            {clientEmail.trim() && <p className="text-[10px] text-ink/50">{clientEmail}</p>}
+            {addrLines(clientAddress).map((l) => (
+              <p key={l} className="text-[10px] leading-relaxed text-ink/50">{l}</p>
+            ))}
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] leading-relaxed text-ink/60">DATE  {date}</p>
+            {dueDate && <p className="text-[10px] leading-relaxed text-ink/60">DUE  {dueDate}</p>}
+          </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-t border-ink/40 pt-2 text-[9px] font-bold uppercase tracking-widest text-ink/40">
+          <span>Description</span>
+          <span className="text-right">Qty</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Amount</span>
+        </div>
+        <div className="mt-1 flex-1">
+          {visible.map((it, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/15 py-2 text-[11px]"
+            >
+              <span className="truncate">{it.desc}</span>
+              <span className="truncate text-right">{it.qty}</span>
+              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+              <span className="truncate text-right font-bold">
+                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end">
+          <div className="w-64 space-y-1.5 text-[11px]">
+            <div className="flex justify-between text-ink/50">
+              <span>SUBTOTAL</span>
+              <span>{money(props.subtotal)}</span>
+            </div>
+            {props.discount > 0 && (
+              <div className="flex justify-between text-ink/50">
+                <span>DISCOUNT ({discountPct}%)</span>
+                <span>-{money(props.discount)}</span>
+              </div>
+            )}
+            {props.tax > 0 && (
+              <div className="flex justify-between text-ink/50">
+                <span>TAX ({taxPct}%)</span>
+                <span>{money(props.tax)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-ink/40 pt-2 font-bold">
+              <span>TOTAL</span>
+              <span>{money(props.total)}</span>
+            </div>
+          </div>
+        </div>
+        {notes.trim() && (
+          <div className="mt-6">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/40">Notes</p>
+            <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
+          </div>
+        )}
+        <p className="mt-auto pt-4 text-[8px] text-ink/30">
+          generated locally by fcuk paywalls — no invoice service counted this one
+        </p>
+      </div>
+    );
+  }
+
+  if (template === "classic") {
+    return (
+      <div className="flex h-full w-full flex-col bg-white px-14 pb-10 pt-10 font-serif text-ink">
+        <div className="h-1 space-y-[3px]">
+          <div className="h-px bg-ink" />
+          <div className="h-px bg-ink" />
+        </div>
+        <p className="mt-8 text-center text-2xl font-bold">INVOICE</p>
+        <p className="mt-1 text-center text-[11px] italic">{sFrom}</p>
+        {fromEmail.trim() && <p className="text-center text-[9px] text-ink/50">{fromEmail}</p>}
+        {addrLines(fromAddress).map((l) => (
+          <p key={l} className="text-center text-[9px] leading-relaxed text-ink/50">{l}</p>
+        ))}
+        <div className="mt-7 flex justify-between gap-8">
+          <div className="border-b border-ink/30 pb-1">
+            <p className="text-[9px] font-bold uppercase tracking-widest">From</p>
+            <p className="mt-1 text-[11px] font-bold">{sFrom}</p>
+            {fromEmail.trim() && <p className="text-[9px] text-ink/50">{fromEmail}</p>}
+          </div>
+          <div className="border-b border-ink/30 pb-1">
+            <p className="text-[9px] font-bold uppercase tracking-widest">Bill to</p>
+            <p className="mt-1 text-[11px] font-bold">{sClient}</p>
+            {clientEmail.trim() && <p className="text-[9px] text-ink/50">{clientEmail}</p>}
+          </div>
+        </div>
+        <div className="mt-3 flex justify-between text-[10px]">
+          <span>
+            DATE&nbsp;&nbsp;{date}
+            {dueDate && (
+              <>
+                <br />
+                DUE&nbsp;&nbsp;{dueDate}
+              </>
+            )}
+          </span>
+          <span>NUMBER&nbsp;&nbsp;{number.trim() || "INV-001"}</span>
+        </div>
+
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-t-2 border-b-2 border-ink pt-2 pb-2 text-[9px] font-bold uppercase tracking-widest">
+          <span>Description</span>
+          <span className="text-right">Qty</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Amount</span>
+        </div>
+        <div className="mt-1 flex-1">
+          {visible.map((it, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/15 py-2 text-[11px]"
+            >
+              <span className="truncate">{it.desc}</span>
+              <span className="truncate text-right">{it.qty}</span>
+              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+              <span className="truncate text-right font-bold">
+                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end">
+          <div className="w-64 space-y-1.5 text-[11px]">
+            <div className="flex justify-between">
+              <span className="font-bold">SUBTOTAL</span>
+              <span>{money(props.subtotal)}</span>
+            </div>
+            {props.discount > 0 && (
+              <div className="flex justify-between">
+                <span className="font-bold">DISCOUNT ({discountPct}%)</span>
+                <span>-{money(props.discount)}</span>
+              </div>
+            )}
+            {props.tax > 0 && (
+              <div className="flex justify-between">
+                <span className="font-bold">TAX ({taxPct}%)</span>
+                <span>{money(props.tax)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-2 border-ink px-3 py-2 font-bold">
+              <span>TOTAL</span>
+              <span>{money(props.total)}</span>
+            </div>
+          </div>
+        </div>
+        {notes.trim() && (
+          <div className="mt-6">
+            <p className="text-[9px] font-bold uppercase tracking-widest">Notes</p>
+            <p className="mt-1 whitespace-pre-line text-[10px] italic leading-relaxed text-ink/60">{notes}</p>
+          </div>
+        )}
+        <p className="mt-auto pt-4 text-center text-[8px] italic text-ink/30">
+          generated locally by fcuk paywalls — no invoice service counted this one
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full flex-col bg-white pb-10 font-mono text-ink">
+      <div className="flex items-center justify-between bg-ink px-14 py-5 text-paper">
+        <span className="font-display text-3xl font-bold uppercase tracking-tight">Invoice</span>
+        <span className="text-sm font-bold">{number.trim() || "INV-001"}</span>
+      </div>
+      <div className="flex flex-1 flex-col px-14 pt-6">
+        <div className="flex justify-between gap-8">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">From</p>
+            <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
+            {fromEmail.trim() && <p className="text-[10px] text-ink/60">{fromEmail}</p>}
+            {addrLines(fromAddress).map((l) => (
+              <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
+            ))}
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">To</p>
+            <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+            {clientEmail.trim() && <p className="text-[10px] text-ink/60">{clientEmail}</p>}
+            {addrLines(clientAddress).map((l) => (
+              <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
+            ))}
+            <p className="mt-2 text-[10px] text-ink/60">DATE&nbsp;&nbsp;{date}</p>
+            {dueDate && <p className="text-[10px] text-ink/60">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
+          </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest text-ink/50">
+          <span>Description</span>
+          <span className="text-right">Qty</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Amount</span>
+        </div>
+        <div>
+          {visible.map((it, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/20 py-2 text-[11px]"
+            >
+              <span className="truncate">{it.desc}</span>
+              <span className="truncate text-right">{it.qty}</span>
+              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+              <span className="truncate text-right font-bold">
+                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end">
+          <div className="w-64 space-y-1.5 text-[11px]">
+            <div className="flex justify-between text-ink/60">
+              <span>SUBTOTAL</span>
+              <span>{money(props.subtotal)}</span>
+            </div>
+            {props.discount > 0 && (
+              <div className="flex justify-between text-ink/60">
+                <span>DISCOUNT ({discountPct}%)</span>
+                <span>-{money(props.discount)}</span>
+              </div>
+            )}
+            {props.tax > 0 && (
+              <div className="flex justify-between text-ink/60">
+                <span>TAX ({taxPct}%)</span>
+                <span>{money(props.tax)}</span>
+              </div>
+            )}
+            <div className="flex justify-between bg-ink px-3 py-2 font-bold text-paper">
+              <span>TOTAL</span>
+              <span>{money(props.total)}</span>
+            </div>
+          </div>
+        </div>
+        {notes.trim() && (
+          <div className="mt-6">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">Notes</p>
+            <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
+          </div>
+        )}
+        <p className="mt-auto pt-4 text-[8px] text-ink/30">
+          generated locally by fcuk paywalls — no invoice service counted this one
+        </p>
+      </div>
+    </div>
   );
 }
