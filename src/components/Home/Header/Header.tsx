@@ -36,8 +36,8 @@ export function Header({
 
   return (
     <header className="border-b-4 border-ink bg-paper">
-      <div className="page-container flex flex-wrap items-start justify-between gap-6 py-6">
-        <div>
+      <div className="page-container flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <button
             type="button"
             className="cursor-pointer border-0 bg-transparent p-0"
@@ -47,16 +47,13 @@ export function Header({
             <Wordmark />
           </button>
 
-          <nav
-            aria-label="Sections"
-            className="mt-4 flex gap-2"
-          >
+          <nav aria-label="Sections" className="flex gap-2">
             <a
               href="#/index"
               target="_self"
               aria-current={activeView === "index" ? "page" : undefined}
               className={cn(
-                "inline-flex h-9 items-center gap-2 rounded-md border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
+                "inline-flex h-8 items-center gap-2 rounded-md border-2 border-ink bg-surface px-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
                 activeView === "index" && "bg-yellow shadow-brutal-sm",
               )}
             >
@@ -67,7 +64,7 @@ export function Header({
               target="_self"
               aria-current={activeView === "tools" ? "page" : undefined}
               className={cn(
-                "inline-flex h-9 items-center gap-2 rounded-md border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
+                "inline-flex h-8 items-center gap-2 rounded-md border-2 border-ink bg-surface px-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-[transform,background-color] duration-150 ease-brutal hover:-translate-y-[2px] hover:bg-yellow active:translate-y-0",
                 activeView === "tools" && "bg-yellow shadow-brutal-sm",
               )}
             >
@@ -76,34 +73,28 @@ export function Header({
           </nav>
         </div>
 
-        <div className="flex flex-col items-end gap-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <a
             href="https://github.com/vaibhxvvy/fcuk-paywalls"
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`GitHub repository, current stars: ${starsCount}`}
-            className="inline-flex h-9 items-center gap-2 rounded-md border-[3px] border-ink bg-yellow px-3 font-mono text-xs font-bold text-ink shadow-brutal-sm transition-[transform,box-shadow] duration-150 ease-brutal hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none active:translate-x-[5px] active:translate-y-[5px] active:shadow-none"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border-[3px] border-ink bg-yellow px-2.5 font-mono text-[11px] font-bold text-ink shadow-brutal-sm transition-[transform,box-shadow] duration-150 ease-brutal hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none active:translate-x-[5px] active:translate-y-[5px] active:shadow-none"
           >
             {starsCount}
-            <StarIcon className="h-3.5 w-3.5" />
+            <StarIcon className="h-3 w-3" />
           </a>
 
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/70">
+          <div className="flex flex-wrap items-center gap-x-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/70">
             <span>
-              [<span className="text-ink">{String(toolCount).padStart(3, "0")}</span>]{" "}
-              TOOLS
+              [<span className="text-ink">{String(toolCount).padStart(3, "0")}</span>] TOOLS
             </span>
             <span>
-              [<span className="text-ink">{String(categoryCount).padStart(3, "0")}</span>]{" "}
-              CATEGORIES
+              [<span className="text-ink">{String(categoryCount).padStart(3, "0")}</span>] CATEGORIES
             </span>
           </div>
 
-          <Button
-            size="md"
-            onClick={() => showModalWithID("submit-tool")}
-            className="uppercase"
-          >
+          <Button size="sm" onClick={() => showModalWithID("submit-tool")} className="uppercase">
             Break the wall
           </Button>
         </div>

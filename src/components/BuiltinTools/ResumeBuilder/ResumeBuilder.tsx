@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   FileText,
   Mail,
@@ -17,6 +18,8 @@ import {
   FileImage,
   ChevronDown,
   FileCode2,
+  ClipboardList,
+  FolderGit2,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -1373,6 +1376,51 @@ function Field({ label, value, onChange, textarea }: {
   );
 }
 
+function EditorSection({
+  title,
+  icon,
+  right,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  right?: ReactNode;
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex items-center gap-2 text-left">
+          <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/70">
+            {icon}
+            {title}
+            {count != null && (
+              <span className="rounded-sm border-2 border-ink bg-yellow px-1 font-mono text-[9px] font-bold text-ink">
+                {count}
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-4 w-4 text-ink/50 transition-transform duration-200 ease-brutal",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+        {right}
+      </div>
+      {open && <div className="border-t-2 border-ink/25 px-3 pt-3 pb-3.5">{children}</div>}
+    </section>
+  );
+}
+
 export function ResumeBuilder() {
   const [preset, setPreset] = useState<FieldPresetId>("engineering");
   const [data, setData] = useState<ResumeData>(() => FIELD_PRESETS.engineering.data());
@@ -1381,9 +1429,16 @@ export function ResumeBuilder() {
   const [scale, setScale] = useState(0.5);
   const [fit, setFit] = useState(true);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    field: true,
+    template: true,
+    contact: true,
+  });
   const fitRef = useRef(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSection = (id: string) => setOpenSections((s) => ({ ...s, [id]: !s[id] }));
 
   const template = useMemo(() => {
     const base = TEMPLATES.find((t) => t.id === templateId)!;
@@ -1420,7 +1475,8 @@ export function ResumeBuilder() {
     if (!el) return;
     const measure = () => {
       const w = el.clientWidth - 32;
-      if (fitRef.current) setScale(Math.min(1, Math.max(0.2, w / A4_W)));
+      const h = el.clientHeight - 32;
+      if (fitRef.current) setScale(Math.min(1, Math.max(0.15, Math.min(w / A4_W, h / A4_H))));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -1438,7 +1494,10 @@ export function ResumeBuilder() {
     fitRef.current = true;
     setFit(true);
     const el = previewRef.current;
-    if (el) setScale(Math.min(1, Math.max(0.2, (el.clientWidth - 32) / A4_W)));
+    if (el)
+      setScale(
+        Math.min(1, Math.max(0.15, Math.min((el.clientWidth - 32) / A4_W, (el.clientHeight - 32) / A4_H))),
+      );
   };
 
   const set = (patch: Partial<ResumeData>) => setData((d) => ({ ...d, ...patch }));
@@ -1675,16 +1734,17 @@ export function ResumeBuilder() {
       <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-2">
         {/* ---- Editor pane ---- */}
         <div className="max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
-          <div className="space-y-5 p-4">
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [01] Your field
-              <Briefcase className="h-4 w-4" aria-hidden="true" />
-            </h2>
-            <p className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+          <div className="space-y-3 p-3">
+          <EditorSection
+            icon={<Briefcase className="h-4 w-4" aria-hidden="true" />}
+            title="[01] Your field"
+            open={openSections.field ?? true}
+            onToggle={() => toggleSection("field")}
+          >
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
               Picks the sample content, sections and a matching template
             </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
               {(Object.keys(FIELD_PRESETS) as FieldPresetId[]).map((p) => (
                 <button
                   key={p}
@@ -1699,14 +1759,15 @@ export function ResumeBuilder() {
                 </button>
               ))}
             </div>
-          </section>
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [02] Template
-              <FileText className="h-4 w-4" aria-hidden="true" />
-            </h2>
-            <div className="mt-3 space-y-2.5">
+          <EditorSection
+            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
+            title="[02] Template"
+            open={openSections.template ?? true}
+            onToggle={() => toggleSection("template")}
+          >
+            <div className="space-y-2.5">
               {TEMPLATES.map((t) => (
                 <button
                   key={t.id}
@@ -1777,11 +1838,15 @@ export function ResumeBuilder() {
                 </span>
               </label>
             )}
-          </section>
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[03] Contact</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+          <EditorSection
+            icon={<Mail className="h-4 w-4" aria-hidden="true" />}
+            title="[03] Contact"
+            open={openSections.contact ?? true}
+            onToggle={() => toggleSection("contact")}
+          >
+            <div className="grid grid-cols-2 gap-2.5">
               <Field label="Full name" value={data.name} onChange={(v) => set({ name: v })} />
               <Field label="Title" value={data.title} onChange={(v) => set({ title: v })} />
               <Field label="Email" value={data.email} onChange={(v) => set({ email: v })} />
@@ -1791,86 +1856,98 @@ export function ResumeBuilder() {
               <Field label="LinkedIn" value={data.linkedin} onChange={(v) => set({ linkedin: v })} />
               <Field label="GitHub" value={data.github} onChange={(v) => set({ github: v })} />
             </div>
-            <div className="mt-3">
+            <div className="mt-2.5">
               <Field label="Summary / profile" value={data.summary} onChange={(v) => set({ summary: v })} textarea />
             </div>
 
-            <div className="mt-4 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted p-3">
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onPhotoFile(f);
-                  e.target.value = "";
-                }}
-              />
-              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">Photo</p>
-              {data.photo ? (
-                <div className="mt-2 flex items-center gap-3">
-                  <img
-                    src={data.photo}
-                    alt="Resume photo preview"
-                    className="h-14 w-14 border-2 border-ink object-cover"
-                  />
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => photoInputRef.current?.click()}
-                        className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-yellow"
-                      >
-                        Replace
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => set({ photo: undefined, showPhoto: false })}
-                        className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-red"
-                      >
-                        Remove
-                      </button>
+            {template.photo !== "none" && (
+              <div className="mt-2.5 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted p-3">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onPhotoFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">Photo</p>
+                {data.photo ? (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img
+                      src={data.photo}
+                      alt="Resume photo preview"
+                      className="h-14 w-14 border-2 border-ink object-cover"
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-yellow"
+                        >
+                          Replace
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => set({ photo: undefined, showPhoto: false })}
+                          className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-red"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={data.showPhoto ?? true}
+                          onChange={(e) => set({ showPhoto: e.target.checked })}
+                          className="h-3.5 w-3.5 cursor-pointer accent-yellow"
+                        />
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
+                          Show photo on resume
+                        </span>
+                      </label>
                     </div>
-                    <label className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={data.showPhoto ?? true}
-                        onChange={(e) => set({ showPhoto: e.target.checked })}
-                        className="h-3.5 w-3.5 cursor-pointer accent-yellow"
-                      />
-                      <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
-                        Show photo on resume
-                      </span>
-                    </label>
                   </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border-2 border-ink bg-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,shadow] duration-200 ease-brutal hover:bg-yellow"
-                >
-                  <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" /> Add photo
-                </button>
-              )}
-              <p className="mt-2 font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/40">
-                Optional — shows on the Brutalist template only. Cropped to 512px on upload, kept on-device.
-              </p>
-            </div>
-          </section>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border-2 border-ink bg-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,shadow] duration-200 ease-brutal hover:bg-yellow"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" /> Add photo
+                  </button>
+                )}
+                <p className="mt-2 font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/40">
+                  Optional — shows on the Brutalist template only. Cropped to 512px on upload, kept on-device.
+                </p>
+              </div>
+            )}
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [04] Experience
-              <button type="button" onClick={() => set({ experience: [...data.experience, { company: "", role: "", location: "", start: "", end: "", bullets: [] }] })}
-                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-1 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5">
+          <EditorSection
+            icon={<ClipboardList className="h-4 w-4" aria-hidden="true" />}
+            title="[04] Experience"
+            count={data.experience.length}
+            right={
+              <button
+                type="button"
+                onClick={() =>
+                  set({ experience: [...data.experience, { company: "", role: "", location: "", start: "", end: "", bullets: [] }] })
+                }
+                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-0.5 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5"
+              >
                 <Plus className="h-3 w-3" aria-hidden="true" /> Add
               </button>
-            </h2>
-            <div className="mt-3 space-y-4">
+            }
+            open={openSections.experience ?? false}
+            onToggle={() => toggleSection("experience")}
+          >
+            <div className="space-y-3">
               {data.experience.map((e, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
                   <div className="flex items-center justify-between">
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">#{i + 1}</p>
                     <button type="button" onClick={() => set({ experience: data.experience.filter((_, j) => j !== i) })}
@@ -1878,11 +1955,11 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="mt-2 grid grid-cols-2 gap-2.5">
                     <Field label="Role" value={e.role} onChange={(v) => setExp(i, { role: v })} />
                     <Field label="Company" value={e.company} onChange={(v) => setExp(i, { company: v })} />
                     <Field label="Location" value={e.location} onChange={(v) => setExp(i, { location: v })} />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <Field label="Start" value={e.start} onChange={(v) => setExp(i, { start: v })} />
                       <Field label="End" value={e.end} onChange={(v) => setExp(i, { end: v })} />
                     </div>
@@ -1901,19 +1978,27 @@ export function ResumeBuilder() {
                 </div>
               ))}
             </div>
-          </section>
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [05] Education
-              <button type="button" onClick={() => set({ education: [...data.education, { school: "", degree: "", location: "", start: "", end: "", notes: "" }] })}
-                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-1 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5">
+          <EditorSection
+            icon={<GraduationCap className="h-4 w-4" aria-hidden="true" />}
+            title="[05] Education"
+            count={data.education.length}
+            right={
+              <button
+                type="button"
+                onClick={() => set({ education: [...data.education, { school: "", degree: "", location: "", start: "", end: "", notes: "" }] })}
+                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-0.5 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5"
+              >
                 <Plus className="h-3 w-3" aria-hidden="true" /> Add
               </button>
-            </h2>
-            <div className="mt-3 space-y-4">
+            }
+            open={openSections.education ?? false}
+            onToggle={() => toggleSection("education")}
+          >
+            <div className="space-y-3">
               {data.education.map((ed, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
                   <div className="flex items-center justify-between">
                     <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
                       <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" /> #{i + 1}
@@ -1923,11 +2008,11 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="mt-2 grid grid-cols-2 gap-2.5">
                     <Field label="Degree" value={ed.degree} onChange={(v) => setEdu(i, { degree: v })} />
                     <Field label="School" value={ed.school} onChange={(v) => setEdu(i, { school: v })} />
                     <Field label="Location" value={ed.location} onChange={(v) => setEdu(i, { location: v })} />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <Field label="Start" value={ed.start} onChange={(v) => setEdu(i, { start: v })} />
                       <Field label="End" value={ed.end} onChange={(v) => setEdu(i, { end: v })} />
                     </div>
@@ -1938,14 +2023,16 @@ export function ResumeBuilder() {
                 </div>
               ))}
             </div>
-          </section>
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [06] Skills
-              <Wrench className="h-4 w-4" aria-hidden="true" />
-            </h2>
-            <label className="mt-3 block">
+          <EditorSection
+            icon={<Wrench className="h-4 w-4" aria-hidden="true" />}
+            title="[06] Skills"
+            count={data.skills.length}
+            open={openSections.skills ?? false}
+            onToggle={() => toggleSection("skills")}
+          >
+            <label className="block">
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">
                 Comma separated
               </span>
@@ -1955,19 +2042,27 @@ export function ResumeBuilder() {
                 className={cn(fieldInput, "mt-0.5")}
               />
             </label>
-          </section>
+          </EditorSection>
 
-          <section className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md">
-            <h2 className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [07] Projects / selected work
-              <button type="button" onClick={() => set({ projects: [...data.projects, { name: "", link: "", description: "" }] })}
-                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-1 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5">
+          <EditorSection
+            icon={<FolderGit2 className="h-4 w-4" aria-hidden="true" />}
+            title="[07] Projects / selected work"
+            count={data.projects.length}
+            right={
+              <button
+                type="button"
+                onClick={() => set({ projects: [...data.projects, { name: "", link: "", description: "" }] })}
+                className="flex items-center gap-1 rounded-md border-2 border-ink bg-yellow px-2 py-0.5 font-mono text-[10px] font-bold text-ink transition-transform duration-200 ease-brutal hover:translate-y-0.5"
+              >
                 <Plus className="h-3 w-3" aria-hidden="true" /> Add
               </button>
-            </h2>
-            <div className="mt-3 space-y-3">
+            }
+            open={openSections.projects ?? false}
+            onToggle={() => toggleSection("projects")}
+          >
+            <div className="space-y-3">
               {data.projects.map((p, i) => (
-                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-4">
+                <div key={i} className="rounded-md border-2 border-ink bg-surface-muted p-3">
                   <div className="flex items-center justify-between">
                     <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">#{i + 1}</p>
                     <button type="button" onClick={() => set({ projects: data.projects.filter((_, j) => j !== i) })}
@@ -1975,7 +2070,7 @@ export function ResumeBuilder() {
                       <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="mt-2 grid grid-cols-2 gap-2.5">
                     <Field label="Name" value={p.name} onChange={(v) => setProj(i, { name: v })} />
                     <Field label="Link" value={p.link} onChange={(v) => setProj(i, { link: v })} />
                   </div>
@@ -1985,7 +2080,7 @@ export function ResumeBuilder() {
                 </div>
               ))}
             </div>
-          </section>
+          </EditorSection>
 
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="md" onClick={reset} className="uppercase">
@@ -2021,7 +2116,7 @@ export function ResumeBuilder() {
                     "min-w-12 px-1 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ease-brutal",
                     fit ? "text-yellow" : "text-paper hover:text-yellow",
                   )}
-                  aria-label="Fit preview to width"
+                  aria-label="Fit preview to screen"
                 >
                   {fit ? "Fit" : `${Math.round(scale * 100)}%`}
                 </button>

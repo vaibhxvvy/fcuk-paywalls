@@ -608,22 +608,22 @@ function ToolsLanding() {
   }, [query, category]);
 
   return (
-    <main className="py-10" id="main-content">
+    <main className="py-6" id="main-content">
       <div className="page-container">
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/60">
               INDEX / TOOLS
             </p>
-            <h1 className="mt-1 font-display text-[clamp(2.25rem,5vw,3.5rem)] font-bold uppercase leading-[0.95] tracking-tight">
+            <h1 className="mt-0.5 font-display text-[clamp(1.75rem,4vw,2.5rem)] font-bold uppercase leading-[0.95] tracking-tight">
               The arsenal.
             </h1>
-            <p className="mt-2 max-w-md text-base font-medium text-ink/80">
+            <p className="mt-1.5 max-w-md text-sm font-medium text-ink/80">
               Built-in tools. No account. No email. No walls. Open a tool and it works — right here, in your
               browser.
             </p>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visible.map((tool, i) => (
                 <a
                   key={tool.id}
@@ -663,23 +663,23 @@ function ToolsLanding() {
             </div>
           </div>
 
-          <aside className="rounded-lg border-[3px] border-ink bg-surface p-4 shadow-brutal-md lg:sticky lg:top-6">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/60">Search</p>
-            <div className="mt-1.5 flex items-center gap-2 rounded-md border-2 border-ink bg-surface-muted px-2.5 py-2 focus-within:border-yellow">
-              <Search className="h-4 w-4 shrink-0 text-ink/50" aria-hidden="true" />
+          <aside className="rounded-lg border-[3px] border-ink bg-surface p-3 shadow-brutal-md lg:sticky lg:top-3">
+            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/60">Search</p>
+            <div className="mt-1 flex items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-1.5 focus-within:border-yellow">
+              <Search className="h-3.5 w-3.5 shrink-0 text-ink/50" aria-hidden="true" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={`Try "qr", "json", "pdf"…`}
-                className="w-full bg-transparent font-mono text-xs font-bold uppercase tracking-widest text-ink outline-none placeholder:text-ink/30"
+                className="w-full bg-transparent font-mono text-[11px] font-bold uppercase tracking-widest text-ink outline-none placeholder:text-ink/30"
                 aria-label="Search tools"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="shrink-0 rounded-md border-2 border-ink px-1.5 font-mono text-xs font-bold text-ink transition-colors duration-200 ease-brutal hover:bg-red"
+                  className="shrink-0 rounded-md border-2 border-ink px-1 font-mono text-[10px] font-bold text-ink transition-colors duration-200 ease-brutal hover:bg-red"
                   aria-label="Clear search"
                 >
                   ✕
@@ -687,15 +687,15 @@ function ToolsLanding() {
               )}
             </div>
             {query && (
-              <p className="mt-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+              <p className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">
                 {visible.length === 0
                   ? "No matches"
                   : `${visible.length} tool${visible.length === 1 ? "" : "s"} match${visible.length === 1 ? "es" : ""} "${query.trim()}"`}
               </p>
             )}
 
-            <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/60">Filter</p>
-            <div className="mt-1.5 flex flex-col gap-1.5">
+            <p className="mt-3 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/60">Filter</p>
+            <div className="mt-1 grid grid-cols-2 gap-1.5">
               {(["all", "text", "code", "image", "web", "pdf"] as const).map((cat) => {
                 const label = cat === "all" ? "All" : CATEGORY_LABELS[cat];
                 const active = category === cat;
@@ -706,7 +706,7 @@ function ToolsLanding() {
                     onClick={() => setCategory(cat)}
                     aria-pressed={active}
                     className={cn(
-                      "flex items-center justify-between rounded-md border-2 border-ink px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                      "flex items-center justify-between gap-1 rounded-md border-2 border-ink px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
                       active
                         ? "bg-ink text-surface shadow-brutal-sm"
                         : "bg-surface-muted text-ink/70 hover:bg-yellow/30",
@@ -722,12 +722,12 @@ function ToolsLanding() {
             <button
               type="button"
               onClick={() => showModalWithID("suggest-tool")}
-              className="mt-4 flex w-full flex-col gap-1.5 rounded-md border-[3px] border-dashed border-ink/60 bg-transparent p-3 text-left transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted/60"
+              className="mt-3 flex w-full flex-col gap-1 rounded-md border-2 border-dashed border-ink/60 bg-transparent p-2.5 text-left transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted/60"
             >
-              <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest text-ink">
-                <Lightbulb className="h-4 w-4" aria-hidden="true" /> Your idea here
+              <span className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink">
+                <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" /> Your idea here
               </span>
-              <span className="font-mono text-[9px] font-semibold uppercase leading-relaxed tracking-widest text-ink/50">
+              <span className="font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/50">
                 Want a tool that doesn't exist yet? Suggest it →
               </span>
             </button>
