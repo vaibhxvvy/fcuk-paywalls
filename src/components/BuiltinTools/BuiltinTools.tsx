@@ -1,22 +1,54 @@
-import { Shapes, Lightbulb, ImageDown } from "lucide-react";
+import {
+  Shapes,
+  ImageDown,
+  Braces,
+  QrCode,
+  ArrowLeftRight,
+  Fingerprint,
+  Binary,
+  Gauge,
+  Palette,
+  FileCode,
+  Table2,
+  AppWindow,
+  Paperclip,
+  Hash,
+  Brush,
+  Lightbulb,
+  type LucideIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Badge } from "../ui/badge";
 import { BrickWall } from "../decoration/BrickWall";
 import { SvgViewer } from "./SvgViewer/SvgViewer";
 import { ImageConverter } from "./ImageConverter/ImageConverter";
+import { JsonFormatter } from "./JsonFormatter/JsonFormatter";
+import { QrForge } from "./QrForge/QrForge";
+import { TextDiff } from "./TextDiff/TextDiff";
+import { IdForge } from "./IdForge/IdForge";
+import { Base64Machine } from "./Base64Machine/Base64Machine";
+import { ImageCrusher } from "./ImageCrusher/ImageCrusher";
+import { PaletteSnatcher } from "./PaletteSnatcher/PaletteSnatcher";
+import { MarkdownForge } from "./MarkdownForge/MarkdownForge";
+import { CsvJson } from "./CsvJson/CsvJson";
+import { Sandbox } from "./Sandbox/Sandbox";
+import { PdfJoiner } from "./PdfJoiner/PdfJoiner";
+import { Hasher } from "./Hasher/Hasher";
+import { AsciiArtist } from "./AsciiArtist/AsciiArtist";
 
 interface BuiltinToolEntry {
   id: string;
   name: string;
   description: string;
-  icon: typeof Shapes;
+  icon: LucideIcon;
   status: "live" | "soon";
 }
 
 const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   {
     id: "svg-viewer",
-    name: "SVG VIEWER",
+    name: "SVG viewer",
     description:
       "Paste any SVG, preview it on paper or checker, zoom in, copy the code, download the file. All in your browser.",
     icon: Shapes,
@@ -30,15 +62,138 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: ImageDown,
     status: "live",
   },
+  {
+    id: "json-formatter",
+    name: "JSON formatter",
+    description:
+      "Paste minified chaos, get readable order. Validate, format, minify — all in your browser, nothing uploaded.",
+    icon: Braces,
+    status: "live",
+  },
+  {
+    id: "qr-forge",
+    name: "QR forge",
+    description:
+      "Turn any text or URL into a scannable square. SVG or PNG, any size, with real error correction.",
+    icon: QrCode,
+    status: "live",
+  },
+  {
+    id: "text-diff",
+    name: "Text diff",
+    description:
+      "Two texts, one truth. Side-by-side line diff with added, removed and unchanged — computed locally.",
+    icon: ArrowLeftRight,
+    status: "live",
+  },
+  {
+    id: "id-forge",
+    name: "ID & password forge",
+    description:
+      "UUIDs, passwords, secrets — minted locally with real cryptographic randomness. Your keys, your tab.",
+    icon: Fingerprint,
+    status: "live",
+  },
+  {
+    id: "base64",
+    name: "Base64 machine",
+    description:
+      "Encode and decode between UTF-8, Base64, Base64URL, hex and URL-encoding. All of it, in your tab.",
+    icon: Binary,
+    status: "live",
+  },
+  {
+    id: "image-crusher",
+    name: "Image crusher",
+    description:
+      "Smash image file size down to a fraction. Canvas-based re-encode with level control, right in the tab.",
+    icon: Gauge,
+    status: "live",
+  },
+  {
+    id: "palette-snatcher",
+    name: "Palette snatcher",
+    description:
+      "Feed it an image, walk away with its color palette. Dominant colors with hex and CSS variables.",
+    icon: Palette,
+    status: "live",
+  },
+  {
+    id: "markdown-forge",
+    name: "Markdown forge",
+    description:
+      "Drop Markdown, walk out with HTML. Rendered live with GFM — headers, code blocks, tables, links.",
+    icon: FileCode,
+    status: "live",
+  },
+  {
+    id: "csv-json",
+    name: "CSV ⇄ JSON",
+    description:
+      "Both directions, fully in your tab. Quoted fields, commas, the works — no spreadsheet app needed.",
+    icon: Table2,
+    status: "live",
+  },
+  {
+    id: "sandbox",
+    name: "Mini sandbox",
+    description:
+      "Write a bit of JavaScript, run it right here. Console output, errors — in a real sandboxed iframe.",
+    icon: AppWindow,
+    status: "live",
+  },
+  {
+    id: "pdf-joiner",
+    name: "PDF joiner",
+    description:
+      "Stack PDFs, stitch them into one. Reorder, drop, join — all in your browser, nothing uploaded.",
+    icon: Paperclip,
+    status: "live",
+  },
+  {
+    id: "hasher",
+    name: "Hasher",
+    description:
+      "Hash any text with SHA-256, SHA-512, SHA-1 and MD5 at once. Web Crypto, right in your tab.",
+    icon: Hash,
+    status: "live",
+  },
+  {
+    id: "ascii-artist",
+    name: "ASCII artist",
+    description:
+      "Feed it an image, get back pure character art. Luminance-mapped, generated locally in your tab.",
+    icon: Brush,
+    status: "live",
+  },
 ];
+
+const TOOL_ROUTES: Record<string, () => ReactNode> = {
+  "svg-viewer": () => <SvgViewer />,
+  "image-converter": () => <ImageConverter />,
+  "json-formatter": () => <JsonFormatter />,
+  "qr-forge": () => <QrForge />,
+  "text-diff": () => <TextDiff />,
+  "id-forge": () => <IdForge />,
+  base64: () => <Base64Machine />,
+  "image-crusher": () => <ImageCrusher />,
+  "palette-snatcher": () => <PaletteSnatcher />,
+  "markdown-forge": () => <MarkdownForge />,
+  "csv-json": () => <CsvJson />,
+  sandbox: () => <Sandbox />,
+  "pdf-joiner": () => <PdfJoiner />,
+  hasher: () => <Hasher />,
+  "ascii-artist": () => <AsciiArtist />,
+};
 
 interface BuiltinToolsProps {
   route: string;
 }
 
 export function BuiltinTools({ route }: BuiltinToolsProps) {
-  if (route.startsWith("/tools/svg-viewer")) return <SvgViewer />;
-  if (route.startsWith("/tools/image-converter")) return <ImageConverter />;
+  const match = route.match(/^\/tools\/([^/]+)/);
+  const toolId = match?.[1];
+  if (toolId && TOOL_ROUTES[toolId]) return TOOL_ROUTES[toolId]();
 
   return <ToolsLanding />;
 }
