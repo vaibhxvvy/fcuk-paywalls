@@ -28,6 +28,18 @@ import {
   Regex,
   Search,
   Lightbulb,
+  CaseSensitive,
+  BarChart3,
+  AudioWaveform,
+  Terminal,
+  Ruler,
+  Crop,
+  ShieldAlert,
+  Network,
+  FileCode2,
+  CalendarClock,
+  Globe,
+  FileJson,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -60,6 +72,18 @@ const GradientForge = lazy(() => import("./GradientForge/GradientForge").then((m
 const JsonToTs = lazy(() => import("./JsonToTs/JsonToTs").then((m) => ({ default: m.JsonToTs })));
 const ImageToPdf = lazy(() => import("./ImageToPdf/ImageToPdf").then((m) => ({ default: m.ImageToPdf })));
 const RegexLab = lazy(() => import("./RegexLab/RegexLab").then((m) => ({ default: m.RegexLab })));
+const CaseConverter = lazy(() => import("./CaseConverter/CaseConverter").then((m) => ({ default: m.CaseConverter })));
+const TextStats = lazy(() => import("./TextStats/TextStats").then((m) => ({ default: m.TextStats })));
+const Morse = lazy(() => import("./Morse/Morse").then((m) => ({ default: m.Morse })));
+const AsciiTable = lazy(() => import("./AsciiTable/AsciiTable").then((m) => ({ default: m.AsciiTable })));
+const UnitConverter = lazy(() => import("./UnitConverter/UnitConverter").then((m) => ({ default: m.UnitConverter })));
+const ImageResizer = lazy(() => import("./ImageResizer/ImageResizer").then((m) => ({ default: m.ImageResizer })));
+const PasswordTester = lazy(() => import("./PasswordTester/PasswordTester").then((m) => ({ default: m.PasswordTester })));
+const SubnetCalculator = lazy(() => import("./SubnetCalculator/SubnetCalculator").then((m) => ({ default: m.SubnetCalculator })));
+const DataUriGenerator = lazy(() => import("./DataUriGenerator/DataUriGenerator").then((m) => ({ default: m.DataUriGenerator })));
+const CronBuilder = lazy(() => import("./CronBuilder/CronBuilder").then((m) => ({ default: m.CronBuilder })));
+const HttpStatus = lazy(() => import("./HttpStatus/HttpStatus").then((m) => ({ default: m.HttpStatus })));
+const YamlJson = lazy(() => import("./YamlJson/YamlJson").then((m) => ({ default: m.YamlJson })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf";
 
@@ -306,6 +330,114 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: Regex,
     status: "live",
   },
+  {
+    id: "case-converter",
+    category: "text",
+    name: "Case converter",
+    description:
+      "camelCase, snake_case, kebab-case, l33t — every case your codebase demands, converted live in your tab.",
+    icon: CaseSensitive,
+    status: "live",
+  },
+  {
+    id: "text-stats",
+    category: "text",
+    name: "Text stats",
+    description:
+      "Words, characters, reading time and top keywords — every number about your text, counted on-device.",
+    icon: BarChart3,
+    status: "live",
+  },
+  {
+    id: "morse",
+    category: "text",
+    name: "Morse code",
+    description:
+      "Text to Morse and back, with real beeping. Dots, dashes and the full chart — synthesized in your tab.",
+    icon: AudioWaveform,
+    status: "live",
+  },
+  {
+    id: "ascii-table",
+    category: "code",
+    name: "ASCII table",
+    description:
+      "Every character 0–255 with its hex, binary and HTML entity — the full code book, searchable.",
+    icon: Terminal,
+    status: "live",
+  },
+  {
+    id: "unit-converter",
+    category: "code",
+    name: "Unit converter",
+    description:
+      "Length, mass, temperature, data, time, area, volume, speed — exact factors, instant answers.",
+    icon: Ruler,
+    status: "live",
+  },
+  {
+    id: "image-resizer",
+    category: "image",
+    name: "Image resizer",
+    description:
+      "Resize images to exact pixels or a percentage, keep the ratio or don't — PNG, JPG, WEBP out.",
+    icon: Crop,
+    status: "live",
+  },
+  {
+    id: "password-tester",
+    category: "code",
+    name: "Password tester",
+    description:
+      "Entropy, crack time and a fix list for any password — interrogated in your tab, never sent.",
+    icon: ShieldAlert,
+    status: "live",
+  },
+  {
+    id: "subnet-calculator",
+    category: "code",
+    name: "Subnet calculator",
+    description:
+      "IP + CIDR in, network, broadcast, host range and mask bits out. Subnet math solved locally.",
+    icon: Network,
+    status: "live",
+  },
+  {
+    id: "data-uri",
+    category: "code",
+    name: "Data URI generator",
+    description:
+      "Turn any small file into a data: URI for HTML, CSS or URLs — embedded, base64, done.",
+    icon: FileCode2,
+    status: "live",
+  },
+  {
+    id: "cron-builder",
+    category: "code",
+    name: "Cron builder",
+    description:
+      "Build cron expressions visually with presets, and see the next five real run times.",
+    icon: CalendarClock,
+    status: "live",
+  },
+  {
+    id: "http-status",
+    category: "web",
+    name: "HTTP status",
+    description:
+      "Every status code decoded — 402 is the paywall one, 451 is the censorship one, 418 is a teapot.",
+    icon: Globe,
+    status: "live",
+  },
+  {
+    id: "yaml-json",
+    category: "code",
+    name: "YAML ⇄ JSON",
+    description:
+      "YAML to JSON, JSON to YAML — a practical subset parser, hand-rolled, running entirely in your tab.",
+    icon: FileJson,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -334,6 +466,18 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "json-to-ts": () => <JsonToTs />,
   "image-to-pdf": () => <ImageToPdf />,
   "regex-lab": () => <RegexLab />,
+  "case-converter": () => <CaseConverter />,
+  "text-stats": () => <TextStats />,
+  morse: () => <Morse />,
+  "ascii-table": () => <AsciiTable />,
+  "unit-converter": () => <UnitConverter />,
+  "image-resizer": () => <ImageResizer />,
+  "password-tester": () => <PasswordTester />,
+  "subnet-calculator": () => <SubnetCalculator />,
+  "data-uri": () => <DataUriGenerator />,
+  "cron-builder": () => <CronBuilder />,
+  "http-status": () => <HttpStatus />,
+  "yaml-json": () => <YamlJson />,
 };
 
 interface BuiltinToolsProps {
