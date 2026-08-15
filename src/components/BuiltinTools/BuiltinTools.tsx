@@ -40,6 +40,12 @@ import {
   CalendarClock,
   Globe,
   FileJson,
+  FileText,
+  Volume2,
+  Mic,
+  FileDown,
+  Scissors,
+  ZoomIn,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -84,6 +90,12 @@ const DataUriGenerator = lazy(() => import("./DataUriGenerator/DataUriGenerator"
 const CronBuilder = lazy(() => import("./CronBuilder/CronBuilder").then((m) => ({ default: m.CronBuilder })));
 const HttpStatus = lazy(() => import("./HttpStatus/HttpStatus").then((m) => ({ default: m.HttpStatus })));
 const YamlJson = lazy(() => import("./YamlJson/YamlJson").then((m) => ({ default: m.YamlJson })));
+const ResumeBuilder = lazy(() => import("./ResumeBuilder/ResumeBuilder").then((m) => ({ default: m.ResumeBuilder })));
+const TextToSpeech = lazy(() => import("./TextToSpeech/TextToSpeech").then((m) => ({ default: m.TextToSpeech })));
+const SpeechToText = lazy(() => import("./SpeechToText/SpeechToText").then((m) => ({ default: m.SpeechToText })));
+const PdfCompressor = lazy(() => import("./PdfCompressor/PdfCompressor").then((m) => ({ default: m.PdfCompressor })));
+const BackgroundRemover = lazy(() => import("./BackgroundRemover/BackgroundRemover").then((m) => ({ default: m.BackgroundRemover })));
+const ImageUpscaler = lazy(() => import("./ImageUpscaler/ImageUpscaler").then((m) => ({ default: m.ImageUpscaler })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf";
 
@@ -438,6 +450,60 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: FileJson,
     status: "live",
   },
+  {
+    id: "resume-builder",
+    category: "pdf",
+    name: "Resume builder",
+    description:
+      "MIT-style editorial templates with the right fonts for your field. Build it, print it to PDF — no download wall, no watermarks.",
+    icon: FileText,
+    status: "live",
+  },
+  {
+    id: "text-to-speech",
+    category: "web",
+    name: "Text to speech",
+    description:
+      "Unlimited TTS in your browser — voices, speed, pitch. No minute-metered tiers, no credits, no account.",
+    icon: Volume2,
+    status: "live",
+  },
+  {
+    id: "speech-to-text",
+    category: "web",
+    name: "Speech to text",
+    description:
+      "Live dictation straight to text, transcribed in your tab. No monthly minute cap, nothing uploaded.",
+    icon: Mic,
+    status: "live",
+  },
+  {
+    id: "pdf-compressor",
+    category: "pdf",
+    name: "PDF compressor",
+    description:
+      "Shrink PDFs with DPI and quality control — rendered locally, unlimited runs, no daily-task quota.",
+    icon: FileDown,
+    status: "live",
+  },
+  {
+    id: "background-remover",
+    category: "image",
+    name: "Background remover",
+    description:
+      "Cut solid backgrounds to transparent with tolerance control — unlimited previews and PNG exports, no credit packs.",
+    icon: Scissors,
+    status: "live",
+  },
+  {
+    id: "image-upscaler",
+    category: "image",
+    name: "Image upscaler",
+    description:
+      "Lanczos step-scaling plus unsharp sharpening up to 8× — unlimited, free, with no expiring credit tokens.",
+    icon: ZoomIn,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -478,6 +544,12 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "cron-builder": () => <CronBuilder />,
   "http-status": () => <HttpStatus />,
   "yaml-json": () => <YamlJson />,
+  "resume-builder": () => <ResumeBuilder />,
+  "text-to-speech": () => <TextToSpeech />,
+  "speech-to-text": () => <SpeechToText />,
+  "pdf-compressor": () => <PdfCompressor />,
+  "background-remover": () => <BackgroundRemover />,
+  "image-upscaler": () => <ImageUpscaler />,
 };
 
 interface BuiltinToolsProps {
