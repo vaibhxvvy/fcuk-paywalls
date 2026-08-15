@@ -118,24 +118,41 @@ body::before {
   background-size: 256px 256px;
 }
 
-/* ===== SCROLLBAR ===== */
+/* ===== SCROLLBAR (NEO-BRUTALIST) ===== */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-yellow) var(--color-surface-muted);
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-paper);
+  background: var(--color-surface-muted);
+  border-left: 3px solid var(--color-ink);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-ink);
-  border: 2px solid var(--color-paper);
+  background: var(--color-yellow);
+  border: 3px solid var(--color-ink);
   border-radius: 0;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4), inset -1px -1px 0 rgba(0, 0, 0, 0.15);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-red);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-blue);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--color-surface-muted);
+  border-top: 3px solid var(--color-ink);
+  border-left: 3px solid var(--color-ink);
 }
 
 /* ===== BRICK STRIP ANIMATION (loading) ===== */

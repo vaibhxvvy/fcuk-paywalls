@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Shapes,
@@ -26,6 +26,7 @@ import {
   Code2,
   Images,
   Regex,
+  Search,
   Lightbulb,
   type LucideIcon,
 } from "lucide-react";
@@ -331,6 +332,15 @@ export function BuiltinTools({ route }: BuiltinToolsProps) {
 
 function ToolsLanding() {
   const { showModalWithID } = useModal();
+  const [query, setQuery] = useState("");
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return BUILTIN_TOOLS;
+    return BUILTIN_TOOLS.filter((t) =>
+      `${t.name} ${t.description} ${t.id}`.toLowerCase().includes(q),
+    );
+  }, [query]);
 
   return (
     <main className="py-12" id="main-content">
@@ -348,8 +358,37 @@ function ToolsLanding() {
           and it works — right here, in your browser.
         </p>
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {BUILTIN_TOOLS.map((tool, i) => (
+        <div className="mt-10 flex items-center gap-2 rounded-lg border-[3px] border-ink bg-surface p-2 shadow-brutal-md focus-within:-translate-x-0.5 focus-within:-translate-y-0.5 focus-within:shadow-brutal-lg">
+          <Search className="ml-2 h-5 w-5 shrink-0 text-ink/50" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${BUILTIN_TOOLS.length} tools — try "qr", "json", "pdf"…`}
+            className="w-full bg-transparent py-1 font-mono text-sm font-bold uppercase tracking-widest text-ink outline-none placeholder:text-ink/30"
+            aria-label="Search tools"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="rounded-md border-2 border-ink px-2 py-1 font-mono text-xs font-bold text-ink transition-colors duration-200 ease-brutal hover:bg-red"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {query && (
+          <p className="mt-3 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/50">
+            {visible.length === 0
+              ? "No tools match — try another word"
+              : `${visible.length} tool${visible.length === 1 ? "" : "s"} match${visible.length === 1 ? "es" : ""} "${query.trim()}"`}
+          </p>
+        )}
+
+        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {visible.map((tool, i) => (
             <a
               key={tool.id}
               href={`#/tools/${tool.id}`}
@@ -380,11 +419,12 @@ function ToolsLanding() {
             </a>
           ))}
 
-          <button
-            type="button"
-            onClick={() => showModalWithID("suggest-tool")}
-            className="flex min-h-[220px] flex-col gap-3 rounded-lg border-[3px] border-dashed border-ink/60 bg-transparent p-5 text-left transition-[transform,border-color,background-color] duration-200 ease-brutal hover:-translate-x-1 hover:-translate-y-1 hover:border-ink hover:bg-surface-muted/50 active:translate-x-0 active:translate-y-0"
-          >
+          {!query && (
+            <button
+              type="button"
+              onClick={() => showModalWithID("suggest-tool")}
+              className="flex min-h-[220px] flex-col gap-3 rounded-lg border-[3px] border-dashed border-ink/60 bg-transparent p-5 text-left transition-[transform,border-color,background-color] duration-200 ease-brutal hover:-translate-x-1 hover:-translate-y-1 hover:border-ink hover:bg-surface-muted/50 active:translate-x-0 active:translate-y-0"
+            >
             <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-dashed border-ink bg-surface-muted">
               <Lightbulb className="h-6 w-6" aria-hidden="true" />
             </span>
@@ -402,6 +442,7 @@ function ToolsLanding() {
               </span>
             </span>
           </button>
+          )}
         </div>
       </div>
 

@@ -28,6 +28,8 @@ export function GradientForge() {
     return `background: conic-gradient(from ${angle}deg, ${list});`;
   }, [type, angle, stops]);
 
+  const previewValue = useMemo(() => css.replace(/^background:\s*/, "").replace(/;\s*$/, ""), [css]);
+
   const setStop = (i: number, value: string) => {
     setStops((prev) => prev.map((s, idx) => (idx === i ? value : s)));
   };
@@ -162,7 +164,7 @@ export function GradientForge() {
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
             [02] The blend
           </h2>
-          <div className="mt-4 h-56 rounded-md border-2 border-ink" style={{ background: css }} />
+          <div className="mt-4 h-56 rounded-md border-2 border-ink" style={{ background: previewValue }} />
           <div className="mt-4 flex-1 rounded-md border-2 border-ink bg-surface-muted p-4">
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">CSS</p>
             <pre className="mt-2 overflow-auto font-mono text-[11px] text-ink">{css}</pre>
