@@ -33,6 +33,7 @@ import {
 import { useModal } from "../../hooks/useModal";
 import { Badge } from "../ui/badge";
 import { BrickWall } from "../decoration/BrickWall";
+import { cn } from "../../utils/cn";
 
 const SvgViewer = lazy(() => import("./SvgViewer/SvgViewer").then((m) => ({ default: m.SvgViewer })));
 const ImageConverter = lazy(() => import("./ImageConverter/ImageConverter").then((m) => ({ default: m.ImageConverter })));
@@ -60,17 +61,29 @@ const JsonToTs = lazy(() => import("./JsonToTs/JsonToTs").then((m) => ({ default
 const ImageToPdf = lazy(() => import("./ImageToPdf/ImageToPdf").then((m) => ({ default: m.ImageToPdf })));
 const RegexLab = lazy(() => import("./RegexLab/RegexLab").then((m) => ({ default: m.RegexLab })));
 
+type ToolCategory = "text" | "code" | "image" | "web" | "pdf";
+
+const CATEGORY_LABELS: Record<ToolCategory, string> = {
+  text: "Text",
+  code: "Code",
+  image: "Image",
+  web: "Web",
+  pdf: "PDF",
+};
+
 interface BuiltinToolEntry {
   id: string;
   name: string;
   description: string;
   icon: LucideIcon;
   status: "live" | "soon";
+  category: ToolCategory;
 }
 
 const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   {
     id: "svg-viewer",
+    category: "image",
     name: "SVG viewer",
     description:
       "Paste any SVG, preview it on paper or checker, zoom in, copy the code, download the file. All in your browser.",
@@ -79,6 +92,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "image-converter",
+    category: "image",
     name: "Image converter",
     description:
       "SVG, PNG, JPG, WEBP and ICO — convert between any of them with quality and background control. Or trace any image into a clean SVG.",
@@ -87,6 +101,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "json-formatter",
+    category: "code",
     name: "JSON formatter",
     description:
       "Paste minified chaos, get readable order. Validate, format, minify — all in your browser, nothing uploaded.",
@@ -95,6 +110,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "qr-forge",
+    category: "web",
     name: "QR forge",
     description:
       "Turn any text or URL into a scannable square. SVG or PNG, any size, with real error correction.",
@@ -103,6 +119,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "text-diff",
+    category: "text",
     name: "Text diff",
     description:
       "Two texts, one truth. Side-by-side line diff with added, removed and unchanged — computed locally.",
@@ -111,6 +128,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "id-forge",
+    category: "code",
     name: "ID & password forge",
     description:
       "UUIDs, passwords, secrets — minted locally with real cryptographic randomness. Your keys, your tab.",
@@ -119,6 +137,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "base64",
+    category: "code",
     name: "Base64 machine",
     description:
       "Encode and decode between UTF-8, Base64, Base64URL, hex and URL-encoding. All of it, in your tab.",
@@ -127,6 +146,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "image-crusher",
+    category: "image",
     name: "Image crusher",
     description:
       "Smash image file size down to a fraction. Canvas-based re-encode with level control, right in the tab.",
@@ -135,6 +155,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "palette-snatcher",
+    category: "image",
     name: "Palette snatcher",
     description:
       "Feed it an image, walk away with its color palette. Dominant colors with hex and CSS variables.",
@@ -143,6 +164,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "markdown-forge",
+    category: "text",
     name: "Markdown forge",
     description:
       "Drop Markdown, walk out with HTML. Rendered live with GFM — headers, code blocks, tables, links.",
@@ -151,6 +173,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "csv-json",
+    category: "code",
     name: "CSV ⇄ JSON",
     description:
       "Both directions, fully in your tab. Quoted fields, commas, the works — no spreadsheet app needed.",
@@ -159,6 +182,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "sandbox",
+    category: "code",
     name: "Mini sandbox",
     description:
       "Write a bit of JavaScript, run it right here. Console output, errors — in a real sandboxed iframe.",
@@ -167,6 +191,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "pdf-joiner",
+    category: "pdf",
     name: "PDF joiner",
     description:
       "Stack PDFs, stitch them into one. Reorder, drop, join — all in your browser, nothing uploaded.",
@@ -175,6 +200,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "hasher",
+    category: "code",
     name: "Hasher",
     description:
       "Hash any text with SHA-256, SHA-512, SHA-1 and MD5 at once. Web Crypto, right in your tab.",
@@ -183,14 +209,16 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "ascii-artist",
+    category: "image",
     name: "ASCII artist",
     description:
-      "Feed it an image, get back pure character art. Luminance-mapped, generated locally in your tab.",
+      "Feed it an image, get back character art — dithering, half-blocks, color modes, and TXT / ANSI / HTML / SVG / PNG export.",
     icon: Brush,
     status: "live",
   },
   {
     id: "link-cleaner",
+    category: "web",
     name: "Link cleaner",
     description:
       "Strip tracking params, follow redirect chains, hand you back a clean URL. Your links, degreased.",
@@ -199,6 +227,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "timestamp",
+    category: "code",
     name: "Timestamp converter",
     description:
       "Unix seconds, milliseconds, ISO — convert any timestamp into everything else. Time, decoded.",
@@ -207,6 +236,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "lorem-generator",
+    category: "text",
     name: "Lorem generator",
     description:
       "Lorem ipsum with optional attitude. Paragraphs, sentences or words — minted locally in your tab.",
@@ -215,6 +245,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "color-lab",
+    category: "web",
     name: "Color lab",
     description:
       "HEX ⇄ RGB ⇄ HSL ⇄ CMYK, WCAG contrast checks and a shade ladder — all mixed in your tab.",
@@ -223,6 +254,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "exif-stripper",
+    category: "image",
     name: "EXIF stripper",
     description:
       "Scrub GPS, camera, dates and hidden metadata from your photos. Byte-level surgery in your tab.",
@@ -231,6 +263,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "font-pairs",
+    category: "web",
     name: "Font pairs",
     description:
       "Preview curated headline + body font pairings with your own copy. Steal the CSS, ship the design.",
@@ -239,6 +272,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "gradient-forge",
+    category: "web",
     name: "Gradient forge",
     description:
       "Linear, radial or conic gradients with any stops you like. Mix, preview, copy the CSS.",
@@ -247,6 +281,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "json-to-ts",
+    category: "code",
     name: "JSON → TypeScript",
     description:
       "Paste JSON, walk out with TypeScript interfaces. Nested objects, arrays, unions — typed in your tab.",
@@ -255,6 +290,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "image-to-pdf",
+    category: "pdf",
     name: "Image → PDF",
     description:
       "Stack images, get back a PDF. JPG and PNG embed natively; anything else is converted first.",
@@ -263,6 +299,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
   },
   {
     id: "regex-lab",
+    category: "code",
     name: "Regex lab",
     description:
       "Write a pattern, watch it hunt. Live highlighting, match counts, capture groups — all in your tab.",
@@ -312,12 +349,16 @@ export function BuiltinTools({ route }: BuiltinToolsProps) {
         fallback={
           <main className="py-12" id="main-content">
             <div className="page-container">
-              <p className="animate-pulse font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
                 INDEX / TOOLS
               </p>
-              <h1 className="mt-2 animate-pulse font-display text-[clamp(2.5rem,7vw,5rem)] font-bold uppercase leading-[0.95] tracking-tight">
+              <h1 className="mt-2 font-display text-[clamp(2.5rem,7vw,5rem)] font-bold uppercase leading-[0.95] tracking-tight">
                 Loading…
               </h1>
+              <div className="brick-strip-animated mt-10 h-4 w-full rounded-md border-2 border-ink" />
+              <p className="mt-3 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/50">
+                Fetching the tool — only what you clicked, nothing more
+              </p>
             </div>
           </main>
         }
@@ -333,14 +374,22 @@ export function BuiltinTools({ route }: BuiltinToolsProps) {
 function ToolsLanding() {
   const { showModalWithID } = useModal();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<ToolCategory | "all">("all");
+
+  const counts = useMemo(() => {
+    const c = { all: BUILTIN_TOOLS.length } as Record<ToolCategory | "all", number>;
+    for (const t of BUILTIN_TOOLS) c[t.category] = (c[t.category] ?? 0) + 1;
+    return c;
+  }, []);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return BUILTIN_TOOLS;
-    return BUILTIN_TOOLS.filter((t) =>
-      `${t.name} ${t.description} ${t.id}`.toLowerCase().includes(q),
-    );
-  }, [query]);
+    return BUILTIN_TOOLS.filter((t) => {
+      if (category !== "all" && t.category !== category) return false;
+      if (q && !`${t.name} ${t.description} ${t.id}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [query, category]);
 
   return (
     <main className="py-12" id="main-content">
@@ -387,6 +436,29 @@ function ToolsLanding() {
           </p>
         )}
 
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(["all", "text", "code", "image", "web", "pdf"] as const).map((cat) => {
+            const label = cat === "all" ? "All" : CATEGORY_LABELS[cat];
+            const active = category === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(cat)}
+                aria-pressed={active}
+                className={cn(
+                  "rounded-md border-2 border-ink px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                  active
+                    ? "bg-ink text-surface shadow-brutal-sm"
+                    : "bg-surface-muted text-ink/70 hover:bg-yellow/30",
+                )}
+              >
+                {label} <span className={active ? "text-yellow" : "text-ink/40"}>{counts[cat]}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((tool, i) => (
             <a
@@ -419,7 +491,7 @@ function ToolsLanding() {
             </a>
           ))}
 
-          {!query && (
+          {!query && category === "all" && (
             <button
               type="button"
               onClick={() => showModalWithID("suggest-tool")}

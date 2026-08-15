@@ -115,7 +115,14 @@ export function SvgViewer() {
   return (
     <main className="py-12" id="main-content">
       <div className="page-container">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+        <a
+          href="#/tools"
+          target="_self"
+          className="inline-flex items-center gap-2 rounded-md border-2 border-ink bg-surface-muted px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
+        >
+          ← Back to tools
+        </a>
+        <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
           INDEX / TOOLS / SVG-VIEWER
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">

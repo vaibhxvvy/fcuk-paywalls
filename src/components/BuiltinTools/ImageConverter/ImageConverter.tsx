@@ -16,7 +16,6 @@ import { buttonVariants } from "../../ui/button";
 import { BrickWall } from "../../decoration/BrickWall";
 import { cn } from "../../../utils/cn";
 import { pngsToIco } from "../../../utils/ico";
-import ImageTracer from "imagetracerjs";
 import { DEFAULT_SVG } from "../SvgViewer/SvgViewer";
 
 const INPUT_ACCEPT = ".svg,.png,.jpg,.jpeg,.webp,.gif,.bmp,.ico";
@@ -293,6 +292,7 @@ setTraceRes("auto");
           }
 
           await new Promise((resolve) => setTimeout(resolve, 50));
+          const ImageTracer = (await import("imagetracerjs")).default;
           let svg = ImageTracer.imagedataToSVG(data, {
             numberOfColors: thresholdOn ? 2 : colors,
             blurRadius: thresholdOn ? 0 : blur,
@@ -404,7 +404,14 @@ setTraceRes("auto");
   return (
     <main className="py-12" id="main-content">
       <div className="page-container">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+        <a
+          href="#/tools"
+          target="_self"
+          className="inline-flex items-center gap-2 rounded-md border-2 border-ink bg-surface-muted px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
+        >
+          ← Back to tools
+        </a>
+        <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
           INDEX / TOOLS / IMAGE-CONVERTER
         </p>
         <h1 className="mt-2 font-display text-[clamp(2.5rem,7vw,5rem)] font-bold uppercase leading-[0.95] tracking-tight">
