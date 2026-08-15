@@ -610,7 +610,7 @@ function ToolsLanding() {
   return (
     <main className="py-6" id="main-content">
       <div className="page-container">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/60">
               INDEX / TOOLS
@@ -618,120 +618,114 @@ function ToolsLanding() {
             <h1 className="mt-0.5 font-display text-[clamp(1.75rem,4vw,2.5rem)] font-bold uppercase leading-[0.95] tracking-tight">
               The arsenal.
             </h1>
-            <p className="mt-1.5 max-w-md text-sm font-medium text-ink/80">
-              Built-in tools. No account. No email. No walls. Open a tool and it works — right here, in your
-              browser.
-            </p>
+          </div>
+          <p className="max-w-md text-[13px] font-medium text-ink/80">
+            Built-in tools. No account. No email. No walls. Open a tool and it works — right here, in your
+            browser.
+          </p>
+        </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {visible.map((tool, i) => (
-                <a
-                  key={tool.id}
-                  href={`#/tools/${tool.id}`}
-                  target="_self"
-                  className="group relative flex min-h-[210px] flex-col gap-3 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md transition-[transform,box-shadow] duration-200 ease-brutal hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-lg active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-3 right-3 font-mono text-[10px] font-semibold text-ink/30"
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-ink bg-yellow shadow-brutal-sm">
-                    <tool.icon className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                  <h2 className="font-display text-2xl font-bold uppercase tracking-tight">
-                    {tool.name}
-                  </h2>
-                  <p className="text-sm leading-relaxed text-ink/80">
-                    {tool.description}
-                  </p>
-                  <span className="mt-auto flex items-center gap-2">
-                    <Badge variant="green">Live</Badge>
-                    <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/50 group-hover:text-ink">
-                      Open ↗
-                    </span>
-                  </span>
-                </a>
-              ))}
-
-              {visible.length === 0 && (
-                <p className="rounded-lg border-[3px] border-dashed border-ink/60 p-5 font-mono text-xs font-bold uppercase tracking-widest text-ink/50 sm:col-span-2 xl:col-span-3">
-                  No tools match — try another word
-                </p>
-              )}
-            </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2 rounded-lg border-[3px] border-ink bg-surface p-2.5 shadow-brutal-md">
+          <div className="flex min-w-56 flex-1 items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2.5 py-1.5 focus-within:border-yellow">
+            <Search className="h-3.5 w-3.5 shrink-0 text-ink/50" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Try "qr", "json", "pdf"…`}
+              className="w-full bg-transparent font-mono text-[11px] font-bold uppercase tracking-widest text-ink outline-none placeholder:text-ink/30"
+              aria-label="Search tools"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="shrink-0 rounded-md border-2 border-ink px-1 font-mono text-[10px] font-bold text-ink transition-colors duration-200 ease-brutal hover:bg-red"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          <aside className="rounded-lg border-[3px] border-ink bg-surface p-3 shadow-brutal-md lg:sticky lg:top-3">
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/60">Search</p>
-            <div className="mt-1 flex items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-1.5 focus-within:border-yellow">
-              <Search className="h-3.5 w-3.5 shrink-0 text-ink/50" aria-hidden="true" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Try "qr", "json", "pdf"…`}
-                className="w-full bg-transparent font-mono text-[11px] font-bold uppercase tracking-widest text-ink outline-none placeholder:text-ink/30"
-                aria-label="Search tools"
-              />
-              {query && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(["all", "text", "code", "image", "web", "pdf"] as const).map((cat) => {
+              const label = cat === "all" ? "All" : CATEGORY_LABELS[cat];
+              const active = category === cat;
+              return (
                 <button
+                  key={cat}
                   type="button"
-                  onClick={() => setQuery("")}
-                  className="shrink-0 rounded-md border-2 border-ink px-1 font-mono text-[10px] font-bold text-ink transition-colors duration-200 ease-brutal hover:bg-red"
-                  aria-label="Clear search"
+                  onClick={() => setCategory(cat)}
+                  aria-pressed={active}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border-2 border-ink px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
+                    active
+                      ? "bg-ink text-surface shadow-brutal-sm"
+                      : "bg-surface-muted text-ink/70 hover:bg-yellow/30",
+                  )}
                 >
-                  ✕
+                  {label}
+                  <span className={active ? "text-yellow" : "text-ink/40"}>{counts[cat]}</span>
                 </button>
-              )}
-            </div>
-            {query && (
-              <p className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">
-                {visible.length === 0
-                  ? "No matches"
-                  : `${visible.length} tool${visible.length === 1 ? "" : "s"} match${visible.length === 1 ? "es" : ""} "${query.trim()}"`}
-              </p>
-            )}
+              );
+            })}
+          </div>
 
-            <p className="mt-3 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/60">Filter</p>
-            <div className="mt-1 grid grid-cols-2 gap-1.5">
-              {(["all", "text", "code", "image", "web", "pdf"] as const).map((cat) => {
-                const label = cat === "all" ? "All" : CATEGORY_LABELS[cat];
-                const active = category === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    aria-pressed={active}
-                    className={cn(
-                      "flex items-center justify-between gap-1 rounded-md border-2 border-ink px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal",
-                      active
-                        ? "bg-ink text-surface shadow-brutal-sm"
-                        : "bg-surface-muted text-ink/70 hover:bg-yellow/30",
-                    )}
-                  >
-                    {label}
-                    <span className={active ? "text-yellow" : "text-ink/40"}>{counts[cat]}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <button
+            type="button"
+            onClick={() => showModalWithID("suggest-tool")}
+            className="flex items-center gap-1.5 rounded-md border-2 border-dashed border-ink/60 bg-transparent px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted"
+          >
+            <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" /> Your idea here →
+          </button>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => showModalWithID("suggest-tool")}
-              className="mt-3 flex w-full flex-col gap-1 rounded-md border-2 border-dashed border-ink/60 bg-transparent p-2.5 text-left transition-[background-color,border-color] duration-200 ease-brutal hover:border-ink hover:bg-surface-muted/60"
+        {query && (
+          <p className="mt-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+            {visible.length === 0
+              ? "No matches — try another word"
+              : `${visible.length} tool${visible.length === 1 ? "" : "s"} match${visible.length === 1 ? "es" : ""} "${query.trim()}"`}
+          </p>
+        )}
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((tool, i) => (
+            <a
+              key={tool.id}
+              href={`#/tools/${tool.id}`}
+              target="_self"
+              className="group relative flex min-h-[210px] flex-col gap-3 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md transition-[transform,box-shadow] duration-200 ease-brutal hover:-translate-x-1 hover:-translate-y-1 hover:shadow-brutal-lg active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm"
             >
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink">
-                <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" /> Your idea here
+              <span
+                aria-hidden="true"
+                className="absolute top-3 right-3 font-mono text-[10px] font-semibold text-ink/30"
+              >
+                {String(i + 1).padStart(2, "0")}
               </span>
-              <span className="font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/50">
-                Want a tool that doesn't exist yet? Suggest it →
+              <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-ink bg-yellow shadow-brutal-sm">
+                <tool.icon className="h-6 w-6" aria-hidden="true" />
               </span>
-            </button>
-          </aside>
+              <h2 className="font-display text-2xl font-bold uppercase tracking-tight">
+                {tool.name}
+              </h2>
+              <p className="text-sm leading-relaxed text-ink/80">
+                {tool.description}
+              </p>
+              <span className="mt-auto flex items-center gap-2">
+                <Badge variant="green">Live</Badge>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/50 group-hover:text-ink">
+                  Open ↗
+                </span>
+              </span>
+            </a>
+          ))}
+
+          {visible.length === 0 && (
+            <p className="rounded-lg border-[3px] border-dashed border-ink/60 p-5 font-mono text-xs font-bold uppercase tracking-widest text-ink/50 sm:col-span-2 xl:col-span-3">
+              No tools match — try another word
+            </p>
+          )}
         </div>
       </div>
 

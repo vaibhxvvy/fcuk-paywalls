@@ -13,7 +13,7 @@ interface ToolShellProps {
 export function ToolShell({ crumb, title, tagline, note, children, fill }: ToolShellProps) {
   if (fill) {
     return (
-      <main className="flex h-[calc(100dvh-6.5rem)] min-h-[34rem] flex-col overflow-hidden" id="main-content">
+      <main className="flex h-[calc(100dvh-5.5rem)] min-h-[34rem] flex-col overflow-hidden" id="main-content">
         <div className="shrink-0 px-6 lg:px-10">
           <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
             <div>
@@ -24,17 +24,17 @@ export function ToolShell({ crumb, title, tagline, note, children, fill }: ToolS
               >
                 ← Back to tools
               </a>
-              <div className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/60">
                   INDEX / TOOLS / {crumb}
                 </p>
-                <h1 className="font-display text-3xl font-bold uppercase leading-none tracking-tight">{title}</h1>
+                <h1 className="font-display text-2xl font-bold uppercase leading-none tracking-tight">{title}</h1>
               </div>
             </div>
-            <p className="max-w-md text-sm font-medium text-ink/80">{tagline}</p>
+            <p className="max-w-lg text-[13px] font-medium text-ink/80">{tagline}</p>
           </div>
         </div>
-        <div className="min-h-0 flex-1 px-6 pt-5 pb-6 lg:px-10">{children}</div>
+        <div className="min-h-0 flex-1 px-6 pt-4 pb-4 lg:px-10">{children}</div>
       </main>
     );
   }

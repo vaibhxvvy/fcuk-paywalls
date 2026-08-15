@@ -20,6 +20,7 @@ import {
   FileCode2,
   ClipboardList,
   FolderGit2,
+  Check,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -698,6 +699,18 @@ const A4_W = 794;
 const A4_H = 1123;
 
 const ACCENTS = ["#FFD84D", "#FF5A5F", "#0F6CBD", "#65D68A", "#A31F34", "#8B5CF6", "#111111"] as const;
+
+/** Perceived luminance — pick a check color with enough contrast against the swatch. */
+function isLight(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 140;
+}
+
+const selectClass =
+  "w-full appearance-none rounded-md border-2 border-ink bg-surface-muted px-2.5 py-1.5 pr-8 font-mono text-[11px] font-bold uppercase tracking-widest text-ink outline-none transition-colors duration-200 ease-brutal focus:border-yellow";
 
 const SAVE_FORMATS = [
   { id: "pdf", label: "PDF", icon: Printer, hint: "full A4" },
@@ -1474,8 +1487,8 @@ export function ResumeBuilder() {
     const el = previewRef.current;
     if (!el) return;
     const measure = () => {
-      const w = el.clientWidth - 32;
-      const h = el.clientHeight - 32;
+      const w = el.clientWidth - 24;
+      const h = el.clientHeight - 24;
       if (fitRef.current) setScale(Math.min(1, Math.max(0.15, Math.min(w / A4_W, h / A4_H))));
     };
     measure();
@@ -1496,7 +1509,7 @@ export function ResumeBuilder() {
     const el = previewRef.current;
     if (el)
       setScale(
-        Math.min(1, Math.max(0.15, Math.min((el.clientWidth - 32) / A4_W, (el.clientHeight - 32) / A4_H))),
+        Math.min(1, Math.max(0.15, Math.min((el.clientWidth - 24) / A4_W, (el.clientHeight - 24) / A4_H))),
       );
   };
 
@@ -1729,9 +1742,9 @@ export function ResumeBuilder() {
       fill
       crumb="RESUME-BUILDER"
       title="The papers."
-      tagline="Build on the left, inspect on the right. Export PDF, PNG, DOCX or TEX for Overleaf — no download wall."
+      tagline="Build on the left, inspect on the right."
     >
-      <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-2">
+      <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)]">
         {/* ---- Editor pane ---- */}
         <div className="max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
           <div className="space-y-3 p-3">
@@ -1744,20 +1757,23 @@ export function ResumeBuilder() {
             <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
               Picks the sample content, sections and a matching template
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {(Object.keys(FIELD_PRESETS) as FieldPresetId[]).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => applyPreset(p)}
-                  className={cn(
-                    "rounded-md border-2 border-ink px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-[background-color,shadow] duration-200 ease-brutal",
-                    preset === p ? "bg-ink text-surface shadow-brutal-sm" : "bg-surface-muted hover:bg-yellow/30",
-                  )}
-                >
-                  {FIELD_PRESETS[p].label}
-                </button>
-              ))}
+            <div className="relative mt-2.5">
+              <select
+                value={preset}
+                onChange={(e) => applyPreset(e.target.value as FieldPresetId)}
+                className={selectClass}
+                aria-label="Your field"
+              >
+                {(Object.keys(FIELD_PRESETS) as FieldPresetId[]).map((p) => (
+                  <option key={p} value={p}>
+                    {FIELD_PRESETS[p].label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
+              />
             </div>
           </EditorSection>
 
@@ -1767,37 +1783,28 @@ export function ResumeBuilder() {
             open={openSections.template ?? true}
             onToggle={() => toggleSection("template")}
           >
-            <div className="space-y-2.5">
-              {TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTemplateId(t.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-md border-2 border-ink p-3 text-left transition-[background-color,shadow] duration-200 ease-brutal",
-                    templateId === t.id ? "bg-yellow shadow-brutal-sm" : "bg-surface-muted hover:bg-yellow/30",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-ink">{t.name}</p>
-                    <p className="mt-0.5 font-mono text-[9px] leading-snug text-ink/60">{t.desc}</p>
-                    <p className="mt-1.5 font-mono text-[9px] font-semibold text-ink/50">
-                      {t.fonts.display} / {t.fonts.body}
-                    </p>
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "h-3 w-3 shrink-0 rounded-full border-2 border-ink",
-                      templateId === t.id ? "bg-ink" : "bg-surface",
-                    )}
-                  />
-                </button>
-              ))}
+            <div className="relative">
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value as TemplateId)}
+                className={selectClass}
+                aria-label="Template"
+              >
+                {TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} — {t.desc}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-ink/60"
+              />
             </div>
-            <div className="mt-4">
-              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">
-                Accent colour — {accent ?? "template default"}
+            <div className="mt-3.5">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
+                Accent colour —{" "}
+                <span className="text-ink">{accent ?? "template default"}</span>
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <button
@@ -1817,11 +1824,15 @@ export function ResumeBuilder() {
                     onClick={() => setAccent(c)}
                     aria-label={`Accent ${c}`}
                     className={cn(
-                      "h-7 w-7 border-2 border-ink transition-[transform,box-shadow] duration-200 ease-brutal",
-                      accent === c && "scale-110 shadow-brutal-sm",
+                      "flex h-7 w-7 items-center justify-center border-2 border-ink transition-[transform,box-shadow] duration-200 ease-brutal",
+                      accent === c ? "scale-110 shadow-brutal-sm" : "hover:-translate-y-0.5",
                     )}
                     style={{ background: c }}
-                  />
+                  >
+                    {accent === c && (
+                      <Check className={cn("h-4 w-4", isLight(c) ? "text-ink" : "text-white")} aria-hidden="true" />
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
@@ -2094,8 +2105,8 @@ export function ResumeBuilder() {
         </div>
 
         {/* ---- Preview pane ---- */}
-        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-3 py-2">
+        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none lg:w-[min(100%,calc((100dvh-13.1rem)*0.707+2.7rem))]">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-3 py-1.5">
             <p className="truncate font-mono text-[10px] font-bold uppercase tracking-widest text-paper">
               [08] Live preview — {template.name}
             </p>
@@ -2170,7 +2181,7 @@ export function ResumeBuilder() {
           </div>
 
           <div ref={previewRef} className="relative min-h-0 flex-1 overflow-auto bg-surface-muted">
-            <div className="flex w-full items-start justify-center p-4">
+            <div className="flex w-full items-start justify-center p-3">
               <div
                 className="shrink-0 overflow-hidden rounded-sm shadow-brutal-md"
                 style={{
