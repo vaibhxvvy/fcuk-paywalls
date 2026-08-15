@@ -12,6 +12,7 @@ import {
   Trash2,
   Printer,
   RotateCcw,
+  ImagePlus,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -596,9 +597,11 @@ interface ResumeData {
   education: EducationItem[];
   projects: ProjectItem[];
   skills: string[];
+  photo?: string;
+  showPhoto?: boolean;
 }
 
-type TemplateId = "editorial" | "classic" | "modern" | "brutal" | "minimal";
+type TemplateId = "editorial" | "classic" | "modern" | "brutal" | "minimal" | "magazine" | "badge";
 
 interface Template {
   id: TemplateId;
@@ -606,6 +609,7 @@ interface Template {
   desc: string;
   fonts: { display: string; body: string; mono?: string };
   accent: string;
+  photo: "none" | "small" | "circle" | "big" | "banner" | "center-circle";
 }
 
 const TEMPLATES: Template[] = [
@@ -615,6 +619,7 @@ const TEMPLATES: Template[] = [
     desc: "The MIT thesis look — serif display, hairline rules, quiet authority.",
     fonts: { display: "Playfair Display", body: "Newsreader", mono: "IBM Plex Mono" },
     accent: "#A31F34",
+    photo: "small",
   },
   {
     id: "classic",
@@ -622,6 +627,7 @@ const TEMPLATES: Template[] = [
     desc: "Traditional, centered header, serif body. Safe for conservative fields.",
     fonts: { display: "Libre Caslon Text", body: "Crimson Pro" },
     accent: "#111111",
+    photo: "none",
   },
   {
     id: "modern",
@@ -629,6 +635,7 @@ const TEMPLATES: Template[] = [
     desc: "Two-column with accent sidebar and tag chips. Built for ATS and humans.",
     fonts: { display: "Space Grotesk", body: "Inter", mono: "JetBrains Mono" },
     accent: "#0F6CBD",
+    photo: "circle",
   },
   {
     id: "brutal",
@@ -636,6 +643,7 @@ const TEMPLATES: Template[] = [
     desc: "Our house style — bold type, thick rules, no apologies. For loud fields.",
     fonts: { display: "Archivo Black", body: "Space Grotesk", mono: "IBM Plex Mono" },
     accent: "#FFD84D",
+    photo: "big",
   },
   {
     id: "minimal",
@@ -643,6 +651,23 @@ const TEMPLATES: Template[] = [
     desc: "One column, generous whitespace, dot separators. Lets content speak.",
     fonts: { display: "Fraunces", body: "Work Sans", mono: "JetBrains Mono" },
     accent: "#111111",
+    photo: "none",
+  },
+  {
+    id: "magazine",
+    name: "Magazine",
+    desc: "Big photo banner, masthead kicker, red accent. The cover-page look.",
+    fonts: { display: "Playfair Display", body: "Inter", mono: "IBM Plex Mono" },
+    accent: "#FF5A5F",
+    photo: "banner",
+  },
+  {
+    id: "badge",
+    name: "Badge",
+    desc: "Centered circular photo, ID-card energy. Bold, personal, unforgettable.",
+    fonts: { display: "Archivo Black", body: "Space Grotesk", mono: "IBM Plex Mono" },
+    accent: "#4D8DFF",
+    photo: "center-circle",
   },
 ];
 
@@ -736,11 +761,20 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
   const m = template.fonts.mono || template.fonts.body;
   const a = template.accent;
   const ink = "#111111";
+  const show = data.photo && data.showPhoto !== false ? data.photo : null;
 
   if (template.id === "editorial") {
     return (
       <div className="flex h-full flex-col px-16 py-14" style={{ fontFamily: b }}>
         <header className="text-center">
+          {show && (
+            <img
+              src={show}
+              alt=""
+              className="mx-auto mb-4 h-[76px] w-[76px] border-2 object-cover"
+              style={{ borderColor: a }}
+            />
+          )}
           <p className="font-semibold uppercase" style={{ fontFamily: m, fontSize: 10, letterSpacing: 3, color: a }}>
             Curriculum Vitae
           </p>
@@ -889,6 +923,13 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
     return (
       <div className="flex h-full" style={{ fontFamily: b }}>
         <aside className="flex w-[240px] shrink-0 flex-col px-7 py-12 text-white" style={{ background: a }}>
+          {show && (
+            <img
+              src={show}
+              alt=""
+              className="mb-5 h-[110px] w-[110px] rounded-full border-[3px] border-white/80 object-cover shadow-md"
+            />
+          )}
           <h1 className="text-[24px] font-bold leading-tight" style={{ fontFamily: d }}>{data.name}</h1>
           <p className="mt-1 text-[11.5px] font-medium opacity-80">{data.title}</p>
           <div className="mt-5 space-y-1.5 text-[10px] opacity-90">
@@ -975,6 +1016,17 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
       <div className="flex h-full flex-col p-0" style={{ fontFamily: b }}>
         <header className="px-10 pt-10 pb-6" style={{ borderBottom: `6px solid ${ink}` }}>
           <div className="flex items-start justify-between gap-6">
+            {show && (
+              <div className="relative shrink-0 self-center">
+                <div className="absolute inset-0 translate-x-2 translate-y-2" style={{ background: a }} />
+                <img
+                  src={show}
+                  alt=""
+                  className="relative h-[104px] w-[104px] border-4 object-cover"
+                  style={{ borderColor: ink }}
+                />
+              </div>
+            )}
             <div>
               <h1 className="text-[42px] font-bold leading-none uppercase tracking-tight" style={{ fontFamily: d, color: ink }}>
                 {data.name}
@@ -1040,6 +1092,177 @@ function ResumeView({ data, template }: { data: ResumeData; template: Template }
                 <SectionTitle template={template}>Projects</SectionTitle>
                 {data.projects.map((p, i) => (
                   <p key={i} className="mb-1 text-[10.5px] font-semibold" style={{ color: ink }}>
+                    <span className="font-bold" style={{ color: a }}>{p.name}</span> — {p.description}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (template.id === "magazine") {
+    return (
+      <div className="flex h-full flex-col" style={{ fontFamily: b }}>
+        <header className="shrink-0">
+          {show && (
+            <div className="h-[210px] w-full overflow-hidden border-b-[6px] border-ink">
+              <img src={show} alt="" className="h-full w-full object-cover object-top" />
+            </div>
+          )}
+          <div className="px-14 pt-8 pb-6">
+            <p className="font-semibold uppercase" style={{ fontFamily: m, fontSize: 10, letterSpacing: 4, color: a }}>
+              {data.title}
+            </p>
+            <h1 className="mt-2 text-[44px] font-black leading-none tracking-tight" style={{ fontFamily: d, color: ink }}>
+              {data.name}
+            </h1>
+            <div className="mt-4 h-[3px] w-24" style={{ background: a }} />
+            <div className="mt-4">
+              <ContactRow data={data} template={template} />
+            </div>
+          </div>
+        </header>
+        <div className="grid flex-1 grid-cols-[1fr_235px] gap-9 px-14 pb-12">
+          <div>
+            <SectionTitle template={template}>Profile</SectionTitle>
+            <p className="text-[11.5px] leading-relaxed" style={{ color: "rgba(17,17,17,0.85)" }}>{data.summary}</p>
+            <SectionTitle template={template}>Experience</SectionTitle>
+            <div className="space-y-4">
+              {data.experience.map((e, i) => (
+                <div key={i}>
+                  <div className="flex items-baseline justify-between">
+                    <h4 className="text-[12.5px] font-bold" style={{ color: ink }}>{e.role}</h4>
+                    <p className="text-[10px]" style={{ fontFamily: m, color: "rgba(17,17,17,0.6)" }}>
+                      {e.start} — {e.end}
+                    </p>
+                  </div>
+                  <p className="text-[11px] font-bold uppercase" style={{ color: a }}>{e.company} · {e.location}</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                    {e.bullets.map((bl, j) => (
+                      <li key={j} className="text-[11px] leading-relaxed" style={{ color: "rgba(17,17,17,0.85)" }}>
+                        {bl}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <SectionTitle template={template}>Education</SectionTitle>
+            {data.education.map((ed, i) => (
+              <div key={i} className="mb-3">
+                <h4 className="text-[11.5px] font-bold" style={{ color: ink }}>{ed.degree}</h4>
+                <p className="text-[10.5px] font-semibold" style={{ color: a }}>{ed.school}</p>
+                <p className="text-[9.5px]" style={{ fontFamily: m, color: "rgba(17,17,17,0.6)" }}>
+                  {ed.start} — {ed.end}{ed.location ? ` · ${ed.location}` : ""}
+                </p>
+              </div>
+            ))}
+            <SectionTitle template={template}>Skills</SectionTitle>
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
+              {data.skills.map((s, i) => (
+                <span key={i} className="rounded-sm border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase" style={{ borderColor: a, color: ink }}>
+                  {s}
+                </span>
+              ))}
+            </div>
+            {data.projects.length > 0 && (
+              <div className="mt-4">
+                <SectionTitle template={template}>Projects</SectionTitle>
+                {data.projects.map((p, i) => (
+                  <div key={i} className="mb-2">
+                    <h4 className="text-[10.5px] font-bold" style={{ color: ink }}>{p.name}</h4>
+                    <p className="text-[9.5px]" style={{ color: "rgba(17,17,17,0.7)" }}>{p.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (template.id === "badge") {
+    return (
+      <div className="flex h-full flex-col px-14 py-12" style={{ fontFamily: b }}>
+        <header className="text-center">
+          {show && (
+            <img
+              src={show}
+              alt=""
+              className="mx-auto h-[122px] w-[122px] rounded-full border-4 object-cover"
+              style={{ borderColor: ink }}
+            />
+          )}
+          <h1 className="mt-4 text-[40px] font-black uppercase leading-none tracking-tight" style={{ fontFamily: d, color: ink }}>
+            {data.name}
+          </h1>
+          <p
+            className="mt-2 inline-block px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.2em]"
+            style={{ background: a, color: "#111", fontFamily: m }}
+          >
+            {data.title}
+          </p>
+          <div className="mt-4">
+            <ContactRow data={data} template={template} />
+          </div>
+          <div className="mx-auto mt-5 h-1 w-32" style={{ background: a }} />
+        </header>
+        <section className="mt-4">
+          <SectionTitle template={template}>Profile</SectionTitle>
+          <p className="text-center text-[11.5px] leading-relaxed" style={{ color: "rgba(17,17,17,0.85)" }}>{data.summary}</p>
+        </section>
+        <div className="mt-2 grid flex-1 grid-cols-2 gap-8">
+          <div>
+            <SectionTitle template={template}>Experience</SectionTitle>
+            {data.experience.map((e, i) => (
+              <div key={i} className="mb-4">
+                <div className="flex items-baseline justify-between">
+                  <h4 className="text-[12px] font-bold uppercase" style={{ fontFamily: d, color: ink }}>{e.role}</h4>
+                  <p className="text-[10px]" style={{ fontFamily: m, color: "rgba(17,17,17,0.6)" }}>{e.start} — {e.end}</p>
+                </div>
+                <p className="text-[11px] font-semibold" style={{ color: a }}>{e.company} · {e.location}</p>
+                <ul className="mt-1.5 space-y-1 pl-3">
+                  {e.bullets.map((bl, j) => (
+                    <li key={j} className="flex gap-2 text-[11px] leading-snug" style={{ color: "rgba(17,17,17,0.85)" }}>
+                      <span className="shrink-0" style={{ color: a }}>▸</span>{bl}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div>
+            <SectionTitle template={template}>Education</SectionTitle>
+            {data.education.map((ed, i) => (
+              <div key={i} className="mb-3">
+                <h4 className="text-[11.5px] font-bold" style={{ color: ink }}>{ed.degree}</h4>
+                <p className="text-[10.5px] font-semibold" style={{ color: a }}>{ed.school}</p>
+                <p className="text-[9.5px]" style={{ fontFamily: m, color: "rgba(17,17,17,0.6)" }}>
+                  {ed.start} — {ed.end}{ed.location ? ` · ${ed.location}` : ""}
+                </p>
+              </div>
+            ))}
+            <div className="mt-4">
+              <SectionTitle template={template}>Skills</SectionTitle>
+              <div className="flex flex-wrap gap-1.5">
+                {data.skills.map((s, i) => (
+                  <span key={i} className="border-2 border-ink px-2 py-0.5 text-[9.5px] font-bold uppercase" style={{ fontFamily: m, color: ink }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {data.projects.length > 0 && (
+              <div className="mt-4">
+                <SectionTitle template={template}>Projects</SectionTitle>
+                {data.projects.map((p, i) => (
+                  <p key={i} className="mb-1 text-[10.5px]" style={{ color: "rgba(17,17,17,0.8)" }}>
                     <span className="font-bold" style={{ color: a }}>{p.name}</span> — {p.description}
                   </p>
                 ))}
@@ -1158,6 +1381,28 @@ export function ResumeBuilder() {
   const [templateId, setTemplateId] = useState<TemplateId>("editorial");
   const [scale, setScale] = useState(0.5);
   const previewRef = useRef<HTMLDivElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const onPhotoFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 512;
+        const ratio = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        set({ photo: canvas.toDataURL("image/jpeg", 0.85), showPhoto: true });
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const template = TEMPLATES.find((t) => t.id === templateId)!;
 
@@ -1263,6 +1508,11 @@ export function ResumeBuilder() {
                   <p className="mt-0.5 font-mono text-[9px] leading-snug text-ink/60">{t.desc}</p>
                   <p className="mt-1.5 font-mono text-[9px] font-semibold text-ink/50">
                     {t.fonts.display} / {t.fonts.body}
+                    {t.photo !== "none" && (
+                      <span className="ml-1.5 rounded-sm border-2 border-ink bg-yellow px-1 font-bold text-ink">
+                        PHOTO
+                      </span>
+                    )}
                   </p>
                 </button>
               ))}
@@ -1283,6 +1533,71 @@ export function ResumeBuilder() {
             </div>
             <div className="mt-3">
               <Field label="Summary / profile" value={data.summary} onChange={(v) => set({ summary: v })} textarea />
+            </div>
+
+            <div className="mt-4 rounded-md border-2 border-dashed border-ink/40 bg-surface-muted p-3">
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onPhotoFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50">Photo</p>
+              {data.photo ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <img
+                    src={data.photo}
+                    alt="Resume photo preview"
+                    className="h-14 w-14 border-2 border-ink object-cover"
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-yellow"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => set({ photo: undefined, showPhoto: false })}
+                        className="rounded-md border-2 border-ink bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-colors duration-200 ease-brutal hover:bg-red"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={data.showPhoto ?? true}
+                        onChange={(e) => set({ showPhoto: e.target.checked })}
+                        className="h-3.5 w-3.5 cursor-pointer accent-yellow"
+                      />
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-ink/70">
+                        Show photo on resume
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border-2 border-ink bg-surface px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[background-color,shadow] duration-200 ease-brutal hover:bg-yellow"
+                >
+                  <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" /> Add photo
+                </button>
+              )}
+              <p className="mt-2 font-mono text-[8px] font-semibold uppercase leading-relaxed tracking-widest text-ink/40">
+                Optional — shows on Editorial, Modern, Brutalist, Magazine and Badge templates. Cropped to 512px
+                on upload, kept on-device.
+              </p>
             </div>
           </section>
 
