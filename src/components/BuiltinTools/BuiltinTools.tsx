@@ -46,6 +46,10 @@ import {
   FileDown,
   Scissors,
   ZoomIn,
+  Clapperboard,
+  ScrollText,
+  PenLine,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -96,6 +100,10 @@ const SpeechToText = lazy(() => import("./SpeechToText/SpeechToText").then((m) =
 const PdfCompressor = lazy(() => import("./PdfCompressor/PdfCompressor").then((m) => ({ default: m.PdfCompressor })));
 const BackgroundRemover = lazy(() => import("./BackgroundRemover/BackgroundRemover").then((m) => ({ default: m.BackgroundRemover })));
 const ImageUpscaler = lazy(() => import("./ImageUpscaler/ImageUpscaler").then((m) => ({ default: m.ImageUpscaler })));
+const VideoToGif = lazy(() => import("./VideoToGif/VideoToGif").then((m) => ({ default: m.VideoToGif })));
+const PdfToText = lazy(() => import("./PdfToText/PdfToText").then((m) => ({ default: m.PdfToText })));
+const PdfSigner = lazy(() => import("./PdfSigner/PdfSigner").then((m) => ({ default: m.PdfSigner })));
+const InvoiceGenerator = lazy(() => import("./InvoiceGenerator/InvoiceGenerator").then((m) => ({ default: m.InvoiceGenerator })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf";
 
@@ -504,6 +512,42 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: ZoomIn,
     status: "live",
   },
+  {
+    id: "video-gif",
+    category: "image",
+    name: "Video → GIF maker",
+    description:
+      "Cut a clip from any video and export it as a GIF — trim, FPS and width control, encoded frame-by-frame in your tab. No watermark, no 30-minute cap, no 3-day storage.",
+    icon: Clapperboard,
+    status: "live",
+  },
+  {
+    id: "pdf-to-text",
+    category: "pdf",
+    name: "PDF → text",
+    description:
+      "Pull every word out of a PDF, page by page. Copy it or save as .txt / .md — no 20-page preview caps, nothing ever uploaded.",
+    icon: ScrollText,
+    status: "live",
+  },
+  {
+    id: "pdf-signer",
+    category: "pdf",
+    name: "PDF signer",
+    description:
+      "Draw or type a signature, pick the page and spot, download the signed PDF. The part DocuSign charges a subscription for.",
+    icon: PenLine,
+    status: "live",
+  },
+  {
+    id: "invoice-generator",
+    category: "pdf",
+    name: "Invoice generator",
+    description:
+      "Line items, tax, discount, notes — a clean brutalist invoice PDF generated locally. No counting your 3 free invoices a month.",
+    icon: Receipt,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -550,6 +594,10 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "pdf-compressor": () => <PdfCompressor />,
   "background-remover": () => <BackgroundRemover />,
   "image-upscaler": () => <ImageUpscaler />,
+  "video-gif": () => <VideoToGif />,
+  "pdf-to-text": () => <PdfToText />,
+  "pdf-signer": () => <PdfSigner />,
+  "invoice-generator": () => <InvoiceGenerator />,
 };
 
 interface BuiltinToolsProps {
