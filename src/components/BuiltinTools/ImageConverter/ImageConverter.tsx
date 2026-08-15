@@ -17,6 +17,7 @@ import { BrickWall } from "../../decoration/BrickWall";
 import { cn } from "../../../utils/cn";
 import { pngsToIco } from "../../../utils/ico";
 import { DEFAULT_SVG } from "../SvgViewer/SvgViewer";
+import { ToolShell } from "../shared/ToolShell";
 
 const INPUT_ACCEPT = ".svg,.png,.jpg,.jpeg,.webp,.gif,.bmp,.ico";
 const OUTPUT_FORMATS = ["png", "jpg", "webp", "ico", "svg"] as const;
@@ -402,31 +403,11 @@ setTraceRes("auto");
   }
 
   return (
-    <main className="py-6" id="main-content">
-      <div className="page-container">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-b-2 border-ink/10 pb-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <a
-              href="#/tools"
-              target="_self"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
-            >
-              ← Back
-            </a>
-            <div className="min-w-0">
-              <p className="truncate font-mono text-[8px] font-semibold uppercase tracking-widest text-ink/50">
-                INDEX / TOOLS / IMAGE-CONVERTER
-              </p>
-              <h1 className="truncate font-display text-xl font-bold uppercase leading-tight tracking-tight">
-                The image converter.
-              </h1>
-            </div>
-          </div>
-          <p className="max-w-sm truncate text-[11px] font-medium text-ink/70">
-            SVG, PNG, JPG, WEBP, ICO — any way, or trace to SVG. All in your browser.
-          </p>
-        </div>
-
+    <ToolShell
+      crumb="IMAGE-CONVERTER"
+      title="The image converter."
+      tagline="SVG, PNG, JPG, WEBP, ICO — any way, or trace to SVG. All in your browser."
+    >
         <div className="mt-4 grid gap-6 lg:grid-cols-2">
           <section className="flex flex-col rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <div className="flex items-center justify-between gap-3">
@@ -929,9 +910,8 @@ setTraceRes("auto");
           black/white first — and drawn as pure SVG paths. All conversions
           run locally in your browser.
         </p>
-      </div>
 
-      <BrickWall className="mt-14" />
-    </main>
+        <BrickWall className="mt-14" />
+    </ToolShell>
   );
 }

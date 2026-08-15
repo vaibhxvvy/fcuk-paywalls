@@ -23,6 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
+import { SectionCard } from "../shared/SectionCard";
 import { Button } from "../../ui/button";
 import { cn } from "../../../utils/cn";
 
@@ -1389,15 +1390,7 @@ function Field({ label, value, onChange, textarea }: {
   );
 }
 
-function EditorSection({
-  title,
-  icon,
-  right,
-  count,
-  open,
-  onToggle,
-  children,
-}: {
+function EditorSection(props: {
   title: string;
   icon: ReactNode;
   right?: ReactNode;
@@ -1406,32 +1399,7 @@ function EditorSection({
   onToggle: () => void;
   children: ReactNode;
 }) {
-  return (
-    <section className="rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md">
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <button type="button" onClick={onToggle} aria-expanded={open} className="flex items-center gap-2 text-left">
-          <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/70">
-            {icon}
-            {title}
-            {count != null && (
-              <span className="rounded-sm border-2 border-ink bg-yellow px-1 font-mono text-[9px] font-bold text-ink">
-                {count}
-              </span>
-            )}
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              "h-4 w-4 text-ink/50 transition-transform duration-200 ease-brutal",
-              open && "rotate-180",
-            )}
-          />
-        </button>
-        {right}
-      </div>
-      {open && <div className="border-t-2 border-ink/25 px-3 pt-3 pb-3.5">{children}</div>}
-    </section>
-  );
+  return <SectionCard {...props} />;
 }
 
 export function ResumeBuilder() {
@@ -1735,9 +1703,9 @@ export function ResumeBuilder() {
       title="The papers."
       tagline="Build on the left, inspect on the right."
     >
-      <div className="grid gap-3 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)]">
+      <div className="grid gap-3 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_calc((100dvh-9.6rem)*0.707+2.7rem)]">
         {/* ---- Editor pane ---- */}
-        <div className="max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
+        <div className="min-w-0 max-h-[52dvh] min-h-0 overflow-y-auto rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
           <div className="space-y-3 p-3">
           <EditorSection
             icon={<Briefcase className="h-4 w-4" aria-hidden="true" />}
@@ -2098,7 +2066,7 @@ export function ResumeBuilder() {
         {/* ---- Preview pane ---- */}
         {/* Column width derives from the A4 1:1.414 ratio at the scale that fills the
             remaining viewport height — the page renders exactly resume-sized, flush right. */}
-        <div className="relative flex max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none lg:w-[min(100%,calc((100dvh-9.6rem)*0.707+2.7rem))]">
+        <div className="relative flex min-w-0 max-h-[62dvh] min-h-0 flex-col overflow-hidden rounded-lg border-[3px] border-ink bg-surface shadow-brutal-md lg:max-h-none">
           <div className="flex shrink-0 items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-2.5 py-1">
             <p className="truncate font-mono text-[9px] font-bold uppercase tracking-widest text-paper">
               Live preview — {template.name}

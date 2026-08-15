@@ -9,10 +9,10 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
-import { Badge } from "../../ui/badge";
 import { Button, buttonVariants } from "../../ui/button";
 import { BrickWall } from "../../decoration/BrickWall";
 import { cn } from "../../../utils/cn";
+import { ToolShell } from "../shared/ToolShell";
 
 export const DEFAULT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
   <rect width="400" height="300" fill="#F5F0E8"/>
@@ -113,32 +113,11 @@ export function SvgViewer() {
   const previewWidth = meta?.width ? meta.width * zoom : 320 * zoom;
 
   return (
-    <main className="py-6" id="main-content">
-      <div className="page-container">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-b-2 border-ink/10 pb-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <a
-              href="#/tools"
-              target="_self"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
-            >
-              ← Back
-            </a>
-            <div className="min-w-0">
-              <p className="truncate font-mono text-[8px] font-semibold uppercase tracking-widest text-ink/50">
-                INDEX / TOOLS / SVG-VIEWER
-              </p>
-              <h1 className="truncate font-display text-xl font-bold uppercase leading-tight tracking-tight">
-                The SVG viewer.
-              </h1>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Badge variant="green">Live</Badge>
-            <Badge variant="yellow">Tool 01</Badge>
-          </div>
-        </div>
-
+    <ToolShell
+      crumb="SVG-VIEWER"
+      title="The SVG viewer."
+      tagline="Paste. Preview. Steal. No upload servers, no accounts — it all stays in your browser."
+    >
         <div className="mt-4 grid gap-8 lg:grid-cols-2">
           <section
             aria-label="SVG input"
@@ -358,9 +337,8 @@ export function SvgViewer() {
             </Button>
           </Alert>
         )}
-      </div>
 
-      <BrickWall className="mt-14" />
-    </main>
+        <BrickWall className="mt-14" />
+    </ToolShell>
   );
 }
