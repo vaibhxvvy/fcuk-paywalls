@@ -13,28 +13,32 @@ interface ToolShellProps {
 export function ToolShell({ crumb, title, tagline, note, children, fill }: ToolShellProps) {
   if (fill !== false) {
     return (
-      <main className="flex h-[calc(100dvh-3.75rem)] min-h-[32rem] flex-col overflow-hidden" id="main-content">
-        <div className="shrink-0 px-6 lg:px-10">
-          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
-            <div>
+      <main className="flex h-[calc(100dvh-3.75rem)] min-h-[30rem] flex-col overflow-hidden" id="main-content">
+        <div className="shrink-0 border-b-2 border-ink/10 px-6 lg:px-10">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 py-2.5">
+            <div className="flex min-w-0 items-center gap-3">
               <a
                 href="#/tools"
                 target="_self"
-                className="inline-flex items-center gap-2 rounded-md border-2 border-ink bg-surface-muted px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
               >
-                ← Back to tools
+                ← Back
               </a>
-              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/60">
+              <div className="min-w-0">
+                <p className="truncate font-mono text-[8px] font-semibold uppercase tracking-widest text-ink/50">
                   INDEX / TOOLS / {crumb}
                 </p>
-                <h1 className="font-display text-2xl font-bold uppercase leading-none tracking-tight">{title}</h1>
+                <h1 className="truncate font-display text-xl font-bold uppercase leading-tight tracking-tight">
+                  {title}
+                </h1>
               </div>
             </div>
-            <p className="max-w-lg text-[13px] font-medium text-ink/80">{tagline}</p>
+            {tagline && (
+              <p className="max-w-sm truncate text-[11px] font-medium text-ink/70">{tagline}</p>
+            )}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 lg:px-10">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-3 pb-4 lg:px-10">{children}</div>
       </main>
     );
   }

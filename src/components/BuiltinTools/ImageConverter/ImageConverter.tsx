@@ -404,28 +404,30 @@ setTraceRes("auto");
   return (
     <main className="py-6" id="main-content">
       <div className="page-container">
-        <a
-          href="#/tools"
-          target="_self"
-          className="inline-flex items-center gap-2 rounded-md border-2 border-ink bg-surface-muted px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
-        >
-          ← Back to tools
-        </a>
-        <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
-          INDEX / TOOLS / IMAGE-CONVERTER
-        </p>
-        <h1 className="mt-2 font-display text-[clamp(2.5rem,7vw,5rem)] font-bold uppercase leading-[0.95] tracking-tight">
-          The image
-          <br />
-          converter.
-        </h1>
-        <p className="mt-4 max-w-md text-lg font-medium text-ink/80">
-          SVG, PNG, JPG, WEBP, ICO — convert any way, or trace any image into
-          a clean SVG. Everything happens in your browser. Nothing is
-          uploaded anywhere.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-b-2 border-ink/10 pb-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <a
+              href="#/tools"
+              target="_self"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border-2 border-ink bg-surface-muted px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-[background-color,box-shadow] duration-200 ease-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-yellow/50 hover:shadow-brutal-sm active:translate-x-0 active:translate-y-0 active:shadow-none"
+            >
+              ← Back
+            </a>
+            <div className="min-w-0">
+              <p className="truncate font-mono text-[8px] font-semibold uppercase tracking-widest text-ink/50">
+                INDEX / TOOLS / IMAGE-CONVERTER
+              </p>
+              <h1 className="truncate font-display text-xl font-bold uppercase leading-tight tracking-tight">
+                The image converter.
+              </h1>
+            </div>
+          </div>
+          <p className="max-w-sm truncate text-[11px] font-medium text-ink/70">
+            SVG, PNG, JPG, WEBP, ICO — any way, or trace to SVG. All in your browser.
+          </p>
+        </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <div className="mt-4 grid gap-6 lg:grid-cols-2">
           <section className="flex flex-col rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">

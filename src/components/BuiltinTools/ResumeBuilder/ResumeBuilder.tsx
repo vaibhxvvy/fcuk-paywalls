@@ -2174,9 +2174,9 @@ export function ResumeBuilder() {
           </div>
 
           <div ref={previewRef} className="relative min-h-0 flex-1 overflow-auto bg-surface-muted">
-            <div className="flex w-full items-start justify-center p-3">
+            <div className="flex min-h-full min-w-full p-3">
               <div
-                className="shrink-0 overflow-hidden rounded-sm shadow-brutal-md"
+                className="m-auto shrink-0 overflow-hidden rounded-sm shadow-brutal-md"
                 style={{
                   width: A4_W * scale,
                   height: A4_H * scale,
