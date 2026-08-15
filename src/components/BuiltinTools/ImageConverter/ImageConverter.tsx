@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Copy,
   Download,
   FileUp,
   ImageDown,
@@ -9,13 +10,15 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
-import { buttonVariants } from "../../ui/button";import { BrickWall } from "../../decoration/BrickWall";
+import { buttonVariants } from "../../ui/button";
+import { BrickWall } from "../../decoration/BrickWall";
 import { cn } from "../../../utils/cn";
 import { pngsToIco } from "../../../utils/ico";
+import ImageTracer from "imagetracerjs";
 import { DEFAULT_SVG } from "../SvgViewer/SvgViewer";
 
 const INPUT_ACCEPT = ".svg,.png,.jpg,.jpeg,.webp,.gif,.bmp,.ico";
-const OUTPUT_FORMATS = ["png", "jpg", "webp", "ico"] as const;
+const OUTPUT_FORMATS = ["png", "jpg", "webp", "ico", "svg"] as const;
 type OutputFormat = (typeof OUTPUT_FORMATS)[number];
 type BgMode = "transparent" | "white" | "black" | "paper";
 
@@ -27,12 +30,14 @@ const BG_COLORS: Record<BgMode, string> = {
 };
 
 const ICO_SIZES = [16, 32, 48, 256];
+const MAX_TRACE_DIM = 1400;
 
 const EXT_MAP: Record<OutputFormat, string> = {
   png: "png",
   jpg: "jpg",
   webp: "webp",
   ico: "ico",
+  svg: "svg",
 };
 
 const MIME_MAP: Record<OutputFormat, string> = {
@@ -40,6 +45,7 @@ const MIME_MAP: Record<OutputFormat, string> = {
   jpg: "image/jpeg",
   webp: "image/webp",
   ico: "image/x-icon",
+  svg: "image/svg+xml",
 };
 
 interface Source {
@@ -47,10 +53,19 @@ interface Source {
   baseName: string;
   kind: "svg" | "raster";
   url: string;
+  svgText?: string;
   bytes: number;
   width: number;
   height: number;
   format: string;
+}
+
+interface ConvertResult {
+  url: string;
+  blob: Blob;
+  bytes: number;
+  paths?: number;
+  svgText?: string;
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -108,15 +123,28 @@ export function ImageConverter() {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("png");
   const [quality, setQuality] = useState(0.9);
   const [bg, setBg] = useState<BgMode>("transparent");
+  const [colors, setColors] = useState(16);
+  const [blur, setBlur] = useState(0);
+  const [gapFill, setGapFill] = useState(1.5);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
-  const [result, setResult] = useState<{ url: string; blob: Blob; bytes: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState<ConvertResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const runIdRef = useRef(0);
 
   const lossy = outputFormat === "jpg" || outputFormat === "webp";
-  const bgOptions: BgMode[] =
-    outputFormat === "jpg" ? ["white", "black", "paper"] : ["transparent", "white", "black", "paper"];
+  const tracing = outputFormat === "svg" && source?.kind !== "svg";
+  const passthrough = outputFormat === "svg" && source?.kind === "svg";
+  const needsFlatBg = outputFormat === "jpg" || outputFormat === "svg";
+  const bgOptions: BgMode[] = needsFlatBg
+    ? ["white", "black", "paper"]
+    : ["transparent", "white", "black", "paper"];
+
+  useEffect(() => {
+    if (needsFlatBg && bg === "transparent") setBg("white");
+  }, [needsFlatBg, bg]);
 
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -131,6 +159,7 @@ export function ImageConverter() {
           baseName: file.name.replace(/\.svg$/i, ""),
           kind: "svg",
           url,
+          svgText: text,
           bytes: text.length,
           width: img.naturalWidth,
           height: img.naturalHeight,
@@ -165,6 +194,7 @@ export function ImageConverter() {
       baseName: "sample",
       kind: "svg",
       url,
+      svgText: DEFAULT_SVG,
       bytes: DEFAULT_SVG.length,
       width: img.naturalWidth,
       height: img.naturalHeight,
@@ -174,12 +204,63 @@ export function ImageConverter() {
 
   const convert = useCallback(async () => {
     if (!source) return;
+    const id = ++runIdRef.current;
     setConverting(true);
     setError(null);
     try {
       const img = await loadImage(source.url);
 
-      if (outputFormat === "ico") {
+      if (outputFormat === "svg") {
+        if (source.kind === "svg" && source.svgText) {
+          const blob = new Blob([source.svgText], { type: "image/svg+xml" });
+          setResult({
+            url: URL.createObjectURL(blob),
+            blob,
+            bytes: blob.size,
+            svgText: source.svgText,
+          });
+        } else {
+          const flattenBg = bg === "transparent" ? "#FFFFFF" : BG_COLORS[bg];
+          const scale = Math.min(
+            1,
+            MAX_TRACE_DIM / Math.max(img.naturalWidth, img.naturalHeight),
+          );
+          const w = Math.max(1, Math.round(img.naturalWidth * scale));
+          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+          ctx.fillStyle = flattenBg;
+          ctx.fillRect(0, 0, w, h);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h);
+
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          let svg = ImageTracer.imagedataToSVG(data, {
+            numberOfColors: colors,
+            blurRadius: blur,
+            pathomit: 1,
+          });
+          if (gapFill > 0) {
+            svg = svg.replace(/stroke-width="1"/g, `stroke-width="${gapFill}"`);
+          } else {
+            svg = svg.replace(/\s+stroke="[^"]*" stroke-width="1"/g, "");
+          }
+          if (id !== runIdRef.current) return;
+
+          const blob = new Blob([svg], { type: "image/svg+xml" });
+          setResult({
+            url: URL.createObjectURL(blob),
+            blob,
+            bytes: blob.size,
+            paths: (svg.match(/<path /g) || []).length,
+            svgText: svg,
+          });
+        }
+      } else if (outputFormat === "ico") {
         const entries = [];
         for (const size of ICO_SIZES) {
           const canvas = drawScaled(img, size, size, bg);
@@ -194,15 +275,21 @@ export function ImageConverter() {
         setResult({ url: URL.createObjectURL(blob), blob, bytes: blob.size });
       }
     } catch {
-      setError("THE WALL WON. THE CONVERSION FAILED — TRY A DIFFERENT FORMAT.");
+      if (id === runIdRef.current) {
+        setError(
+          outputFormat === "svg"
+            ? "THE WALL WON. TRACING FAILED — TRY A SIMPLER, FLATTER IMAGE."
+            : "THE WALL WON. THE CONVERSION FAILED — TRY A DIFFERENT FORMAT.",
+        );
+      }
     } finally {
-      setConverting(false);
+      if (id === runIdRef.current) setConverting(false);
     }
-  }, [source, outputFormat, quality, bg, lossy]);
+  }, [source, outputFormat, quality, bg, colors, blur, gapFill, lossy]);
 
   useEffect(() => {
     if (source) void convert();
-  }, [source, outputFormat, quality, bg, convert]);
+  }, [source, outputFormat, quality, bg, colors, blur, gapFill, convert]);
 
   const download = () => {
     if (!result || !source) return;
@@ -212,14 +299,37 @@ export function ImageConverter() {
     a.click();
   };
 
+  const copy = async () => {
+    if (!result?.svgText) return;
+    await navigator.clipboard.writeText(result.svgText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const reset = () => {
+    runIdRef.current++;
     setSource(null);
     setResult(null);
     setError(null);
     setOutputFormat("png");
     setQuality(0.9);
     setBg("transparent");
+    setColors(16);
+    setBlur(0);
+    setGapFill(1.5);
+    setConverting(false);
   };
+
+  const statusParts: string[] = [];
+  if (source) {
+    statusParts.push(`${source.format} → ${outputFormat.toUpperCase()}`);
+    if (passthrough) statusParts.push("PASSTHROUGH");
+    else if (tracing) {
+      if (result) statusParts.push(`${result.paths} PATHS // ${formatBytes(result.bytes)}`);
+    } else if (result) {
+      statusParts.push(formatBytes(result.bytes));
+    }
+  }
 
   return (
     <main className="py-12" id="main-content">
@@ -233,8 +343,9 @@ export function ImageConverter() {
           converter.
         </h1>
         <p className="mt-4 max-w-md text-lg font-medium text-ink/80">
-          SVG, PNG, JPG, WEBP, ICO — convert any way. Everything happens in
-          your browser. Nothing is uploaded anywhere.
+          SVG, PNG, JPG, WEBP, ICO — convert any way, or trace any image into
+          a clean SVG. Everything happens in your browser. Nothing is
+          uploaded anywhere.
         </p>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
@@ -243,9 +354,7 @@ export function ImageConverter() {
               <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
                 [01] Source
               </h2>
-              {source && (
-                <Badge variant="blue">{source.format}</Badge>
-              )}
+              {source && <Badge variant="blue">{source.format}</Badge>}
             </div>
 
             <input
@@ -292,7 +401,7 @@ export function ImageConverter() {
                     Drop a file or click to browse
                   </p>
                   <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
-                    {INPUT_ACCEPT.replace(/\./g, " ").replace(/,/g, " ·")}
+                    SVG · PNG · JPG · WEBP · GIF · BMP · ICO
                   </p>
                 </div>
                 <button
@@ -374,32 +483,106 @@ export function ImageConverter() {
                   </button>
                 ))}
               </div>
+              {tracing && (
+                <p className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
+                  SVG output runs the tracer — tune it below.
+                </p>
+              )}
+              {passthrough && (
+                <p className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
+                  SVG in, SVG out — served as-is, no tracing needed.
+                </p>
+              )}
             </div>
 
-            <div className="mt-5">
-              <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
-                <span>Quality</span>
-                <span className={cn(!lossy && "text-ink/30")}>
-                  {lossy ? `${Math.round(quality * 100)}%` : "LOSS-FREE"}
-                </span>
-              </p>
-              <input
-                type="range"
-                min={0.5}
-                max={1}
-                step={0.05}
-                value={quality}
-                disabled={!lossy}
-                onChange={(e) => setQuality(Number(e.target.value))}
-                className="mt-2 w-full accent-yellow disabled:opacity-40"
-              />
-            </div>
+            {tracing && (
+              <>
+                <div className="mt-5">
+                  <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                    <span>Colors</span>
+                    <span>{colors}</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={2}
+                    max={32}
+                    step={1}
+                    value={colors}
+                    onChange={(e) => setColors(Number(e.target.value))}
+                    className="mt-2 w-full accent-yellow"
+                  />
+                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+                    Higher = closer to the original. Lower = flatter, bolder.
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                    <span>Blur</span>
+                    <span>{blur}</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={8}
+                    step={1}
+                    value={blur}
+                    onChange={(e) => setBlur(Number(e.target.value))}
+                    className="mt-2 w-full accent-yellow"
+                  />
+                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+                    0 traces pixel-exact. Raise it to calm noisy photos.
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                    <span>Gap fill</span>
+                    <span>{gapFill}</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3}
+                    step={0.5}
+                    value={gapFill}
+                    onChange={(e) => setGapFill(Number(e.target.value))}
+                    className="mt-2 w-full accent-yellow"
+                  />
+                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+                    Widens each path so neighbours overlap — kills the
+                    hairlines between shapes. 1.5 is usually right.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {lossy && (
+              <div className="mt-5">
+                <p className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
+                  <span>Quality</span>
+                  <span>{Math.round(quality * 100)}%</span>
+                </p>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={1}
+                  step={0.05}
+                  value={quality}
+                  onChange={(e) => setQuality(Number(e.target.value))}
+                  className="mt-2 w-full accent-yellow"
+                />
+              </div>
+            )}
 
             <div className="mt-5">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/60">
                 Background
                 {outputFormat === "jpg" && (
                   <span className="text-ink/40"> (JPG has no alpha)</span>
+                )}
+                {tracing && (
+                  <span className="text-ink/40"> (tracing needs a flat bg)</span>
                 )}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -429,7 +612,7 @@ export function ImageConverter() {
               <div className="flex min-h-[140px] items-center justify-center overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(#e8e1d5_0%_25%,#ffffff_0%_50%)] bg-[length:24px_24px]">
                 {converting ? (
                   <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-ink/60">
-                    Crushing…
+                    {tracing ? "Tracing…" : "Crushing…"}
                   </p>
                 ) : result ? (
                   <img
@@ -441,18 +624,33 @@ export function ImageConverter() {
                   <ImageDown className="h-10 w-10 text-ink/30" aria-hidden="true" />
                 )}
               </div>
-              <button
-                type="button"
-                onClick={download}
-                disabled={!result || !source}
-                className={cn(
-                  buttonVariants({ variant: "primary", size: "sm" }),
-                  "inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40",
+              <div className="flex flex-wrap gap-2">
+                {tracing && result?.svgText && (
+                  <button
+                    type="button"
+                    onClick={() => void copy()}
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "sm" }),
+                      "inline-flex flex-1 items-center justify-center gap-2",
+                    )}
+                  >
+                    <Copy className="h-4 w-4" aria-hidden="true" />
+                    {copied ? "Copied" : "Copy SVG"}
+                  </button>
                 )}
-              >
-                <Download className="h-4 w-4" aria-hidden="true" />
-                Download {result && source ? `${source.baseName}.${EXT_MAP[outputFormat]}` : "converted file"}
-              </button>
+                <button
+                  type="button"
+                  onClick={download}
+                  disabled={!result || !source}
+                  className={cn(
+                    buttonVariants({ variant: "primary", size: "sm" }),
+                    "inline-flex flex-1 items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40",
+                  )}
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  Download {result && source ? `${source.baseName}.${EXT_MAP[outputFormat]}` : "converted file"}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -464,11 +662,16 @@ export function ImageConverter() {
 
             <div className="mt-5 flex items-center gap-3">
               <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest">
-                <span className={cn("inline-block h-2.5 w-2.5 rounded-full border-2 border-ink", converting ? "animate-pulse bg-yellow" : "bg-green")} />
+                <span
+                  className={cn(
+                    "inline-block h-2.5 w-2.5 rounded-full border-2 border-ink",
+                    converting ? "animate-pulse bg-yellow" : "bg-green",
+                  )}
+                />
                 {converting
-                  ? "[ WORKING ] CRUSHING PIXELS…"
+                  ? `[ WORKING ] ${tracing ? "TRACING PATHS…" : "CRUSHING PIXELS…"}`
                   : source
-                    ? `[ OK ] ${source.format} → ${outputFormat.toUpperCase()} // ${source.width} × ${source.height} // ${result ? formatBytes(result.bytes) : "…"}`
+                    ? `[ OK ] ${statusParts.join(" // ")}`
                     : "[ IDLE ] WAITING FOR A FILE"}
               </span>
               <button
@@ -484,8 +687,10 @@ export function ImageConverter() {
         </div>
 
         <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-          ICO output embeds 16, 32, 48 and 256 px frames — drop it straight
-          into your favicon. All conversions run locally in your browser.
+          ICO output embeds 16, 32, 48 and 256 px frames. Traced sources are
+          flattened onto your background and downscaled to 1400px on the long
+          edge — then drawn as pure SVG paths. All conversions run locally in
+          your browser.
         </p>
       </div>
 

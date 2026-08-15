@@ -1,10 +1,9 @@
-import { Shapes, Lightbulb, ImageDown, PenTool } from "lucide-react";
+import { Shapes, Lightbulb, ImageDown } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
 import { Badge } from "../ui/badge";
 import { BrickWall } from "../decoration/BrickWall";
 import { SvgViewer } from "./SvgViewer/SvgViewer";
 import { ImageConverter } from "./ImageConverter/ImageConverter";
-import { ImageToSvg } from "./ImageToSvg/ImageToSvg";
 
 interface BuiltinToolEntry {
   id: string;
@@ -27,16 +26,8 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     id: "image-converter",
     name: "Image converter",
     description:
-      "SVG, PNG, JPG, WEBP and ICO — convert between any of them with quality and background control. All in your browser.",
+      "SVG, PNG, JPG, WEBP and ICO — convert between any of them with quality and background control. Or trace any image into a clean SVG.",
     icon: ImageDown,
-    status: "live",
-  },
-  {
-    id: "image-to-svg",
-    name: "Image to SVG",
-    description:
-      "Vectorize any PNG, JPG, WEBP or GIF into a clean SVG — with color count and blur controls. Tuned for logos and flat art.",
-    icon: PenTool,
     status: "live",
   },
 ];
@@ -48,7 +39,6 @@ interface BuiltinToolsProps {
 export function BuiltinTools({ route }: BuiltinToolsProps) {
   if (route.startsWith("/tools/svg-viewer")) return <SvgViewer />;
   if (route.startsWith("/tools/image-converter")) return <ImageConverter />;
-  if (route.startsWith("/tools/image-to-svg")) return <ImageToSvg />;
 
   return <ToolsLanding />;
 }
