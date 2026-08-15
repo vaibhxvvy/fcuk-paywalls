@@ -26,7 +26,8 @@ export function PdfSigner() {
   const [mode, setMode] = useState<"draw" | "type">("draw");
   const [typed, setTyped] = useState("");
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [drawing, setDrawing] = useState(false);
+  const drawingRef = useRef(false);
+  const currentRef = useRef<[number, number][]>([]);
   const [penSize, setPenSize] = useState(4);
   const [sigSize, setSigSize] = useState(36);
   const [opacity, setOpacity] = useState(1);
@@ -41,12 +42,19 @@ export function PdfSigner() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, PAD_W, PAD_H);
+    ctx.fillStyle = "#111111";
     ctx.strokeStyle = "#111111";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = penSize;
     for (const stroke of strokes) {
-      if (stroke.points.length < 2) continue;
+      if (stroke.points.length === 0) continue;
+      if (stroke.points.length === 1) {
+        ctx.beginPath();
+        ctx.arc(stroke.points[0][0], stroke.points[0][1], penSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
       ctx.beginPath();
       ctx.moveTo(stroke.points[0][0], stroke.points[0][1]);
       for (const [x, y] of stroke.points.slice(1)) ctx.lineTo(x, y);
@@ -63,21 +71,43 @@ export function PdfSigner() {
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    setDrawing(true);
-    setStrokes((s) => [...s, { points: [toCanvas(e)] }]);
+    drawingRef.current = true;
+    currentRef.current = [toCanvas(e)];
+    const ctx = padRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#111111";
+    ctx.beginPath();
+    ctx.arc(currentRef.current[0][0], currentRef.current[0][1], penSize / 2, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing) return;
-    setStrokes((s) => {
-      const copy = [...s];
-      copy[copy.length - 1] = { points: [...copy[copy.length - 1].points, toCanvas(e)] };
-      return copy;
-    });
+    if (!drawingRef.current || !padRef.current) return;
+    const pt = toCanvas(e);
+    const last = currentRef.current[currentRef.current.length - 1];
+    if (!last) return;
+    const ctx = padRef.current.getContext("2d")!;
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = penSize;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(last[0], last[1]);
+    ctx.lineTo(pt[0], pt[1]);
+    ctx.stroke();
+    currentRef.current.push(pt);
   };
 
-  const onPointerUp = () => setDrawing(false);
+  const endStroke = () => {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    if (currentRef.current.length > 0) {
+      setStrokes((s) => [...s, { points: currentRef.current }]);
+      currentRef.current = [];
+    }
+  };
 
   const onPick = async (file: File) => {
     setError(null);
@@ -119,12 +149,19 @@ export function PdfSigner() {
     tmp.width = w;
     tmp.height = h;
     const ctx = tmp.getContext("2d")!;
+    ctx.fillStyle = "#111111";
     ctx.strokeStyle = "#111111";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = penSize;
     for (const s of strokes) {
-      if (s.points.length < 2) continue;
+      if (s.points.length === 0) continue;
+      if (s.points.length === 1) {
+        ctx.beginPath();
+        ctx.arc(s.points[0][0] - minX + pad, s.points[0][1] - minY + pad, penSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
       ctx.beginPath();
       ctx.moveTo(s.points[0][0] - minX + pad, s.points[0][1] - minY + pad);
       for (const [x, y] of s.points.slice(1)) ctx.lineTo(x - minX + pad, y - minY + pad);
@@ -330,8 +367,9 @@ export function PdfSigner() {
               height={PAD_H}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              className="mt-3 h-40 w-full touch-none rounded-md border-[3px] border-dashed border-ink bg-surface-muted"
+              onPointerUp={endStroke}
+              onPointerCancel={endStroke}
+              className="mt-3 h-40 w-full cursor-crosshair touch-none rounded-md border-[3px] border-dashed border-ink bg-surface-muted"
             />
           ) : (
             <input
