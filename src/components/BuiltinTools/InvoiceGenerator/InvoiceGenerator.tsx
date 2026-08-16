@@ -148,14 +148,17 @@ export function InvoiceGenerator() {
 
   const previewRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
+  const manualZoomRef = useRef(false);
 
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
     const measure = () => {
+      if (manualZoomRef.current) return;
       const w = el.clientWidth - 24;
       const h = el.clientHeight - 24;
-      setScale(Math.min(1, Math.max(0.15, Math.min(w / A4_W, h / A4_H))));
+      const fit = Math.min(1, Math.max(0.15, Math.min(w / A4_W, h / A4_H)));
+      setScale((s) => (Math.abs(fit - s) > 0.05 ? fit : s));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -163,10 +166,13 @@ export function InvoiceGenerator() {
     return () => ro.disconnect();
   }, []);
 
-  const stepZoom = (d: number) =>
+  const stepZoom = (d: number) => {
+    manualZoomRef.current = true;
     setScale((s) => Math.min(1.5, Math.max(0.25, Math.round((s + d) * 100) / 100)));
+  };
 
   const clickFit = () => {
+    manualZoomRef.current = false;
     const el = previewRef.current;
     if (el)
       setScale(Math.min(1, Math.max(0.15, Math.min((el.clientWidth - 24) / A4_W, (el.clientHeight - 24) / A4_H))));
@@ -957,21 +963,18 @@ let codeX = M + W;
                 <Eye className="h-4 w-4" aria-hidden="true" />
               </h2>
               <div className="ml-auto flex items-center gap-1.5">
-                {TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTemplate(t.id)}
-                    title={t.desc}
-                    className={
-                      t.id === template
-                        ? "rounded-md border-2 border-ink bg-ink px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-paper"
-                        : "rounded-md border-2 border-ink bg-surface-muted px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
-                    }
-                  >
-                    {t.name}
-                  </button>
-                ))}
+                <select
+                  value={template}
+                  onChange={(e) => setTemplate(e.target.value as TemplateId)}
+                  title="Template"
+                  className="rounded-md border-2 border-ink bg-surface-muted px-2 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-ink outline-none focus:border-yellow"
+                >
+                  {TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id} title={t.desc}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
                 <span className="mx-1 h-5 w-px bg-ink/20" aria-hidden="true" />
                 <button
                   type="button"
