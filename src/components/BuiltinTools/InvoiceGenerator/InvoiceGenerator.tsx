@@ -11,7 +11,7 @@ interface LineItem {
   rate: string;
 }
 
-type TemplateId = "brutal" | "minimal" | "classic" | "zebra" | "pop";
+type TemplateId = "brutal" | "minimal" | "classic" | "zebra" | "pop" | "receipt" | "invert" | "ledger" | "blueprint";
 
 const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
   { id: "brutal", name: "Brutal", desc: "Black band, thick rules, mono numbers." },
@@ -19,6 +19,10 @@ const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
   { id: "classic", name: "Classic", desc: "Serif type, double rules, centered header." },
   { id: "zebra", name: "Zebra", desc: "Black band, striped rows that alternate." },
   { id: "pop", name: "Pop", desc: "Yellow band, red total box, loud." },
+  { id: "receipt", name: "Receipt", desc: "Centered, dashed rules, cash-register strip." },
+  { id: "invert", name: "Invert", desc: "Black page, light type, yellow total." },
+  { id: "ledger", name: "Ledger", desc: "Ruled columns, mono type, bookkeeping." },
+  { id: "blueprint", name: "Blueprint", desc: "Grid paper, blue ink, drafting table." },
 ];
 
 const CODES: { id: "none" | "barcode" | "qr"; name: string }[] = [
@@ -198,6 +202,8 @@ export function InvoiceGenerator() {
     const zebraFill = rgb(0.96, 0.94, 0.91);
     const yellow = rgb(1, 0.847, 0.302);
     const red = rgb(1, 0.353, 0.373);
+    const blue = rgb(0.302, 0.553, 1);
+    const lightBlue = rgb(0.82, 0.89, 1);
 
     const helv = await doc.embedFont(StandardFonts.Helvetica);
     const helvB = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -238,7 +244,7 @@ export function InvoiceGenerator() {
       rightX: number,
       y: number,
       maxW: number,
-      color = ink,
+      color: typeof ink = ink,
     ) => {
       let s = size;
       let t = text;
@@ -246,7 +252,7 @@ export function InvoiceGenerator() {
       page.drawText(t, { x: rightX - f.widthOfTextAtSize(t, s), y, size: s, font: f, color });
     };
 
-    const drawBarcode = (rightX: number, y: number) => {
+    const drawBarcode = (rightX: number, y: number, color: typeof ink = ink) => {
       const bits = code39Bits(codeVal);
       const narrow = 1.4;
       const wide = 2.8;
@@ -254,14 +260,14 @@ export function InvoiceGenerator() {
       bits.forEach((b) => (total += b ? wide : narrow));
       let x = rightX - total;
       bits.forEach((b) => {
-        if (b) page.drawRectangle({ x, y, width: wide, height: 34, color: ink });
+        if (b) page.drawRectangle({ x, y, width: wide, height: 34, color });
         x += b ? wide : narrow;
       });
       const label = codeVal;
-      page.drawText(label, { x: rightX - mono.widthOfTextAtSize(label, 7) / 2, y: y - 12, size: 7, font: mono, color: gray });
+      page.drawText(label, { x: rightX - mono.widthOfTextAtSize(label, 7) / 2, y: y - 12, size: 7, font: mono, color });
     };
 
-    const drawQr = (rightX: number, y: number) => {
+    const drawQr = (rightX: number, y: number, color: typeof ink = ink) => {
       const q = qrcode(0, "M");
       q.addData(codeVal);
       q.make();
@@ -272,12 +278,12 @@ export function InvoiceGenerator() {
       for (let r = 0; r < n; r++)
         for (let c = 0; c < n; c++)
           if (q.isDark(r, c))
-            page.drawRectangle({ x: x + c * ms, y: y + (n - 1 - r) * ms, width: ms, height: ms, color: ink });
+            page.drawRectangle({ x: x + c * ms, y: y + (n - 1 - r) * ms, width: ms, height: ms, color });
     };
 
-    const drawCode = () => {
-      if (code === "barcode") drawBarcode(M + W, 64);
-      else if (code === "qr") drawQr(M + W, 58);
+    const drawCode = (rightX = M + W, y = 58, color: typeof ink = ink) => {
+      if (code === "barcode") drawBarcode(rightX, y + 6, color);
+      else if (code === "qr") drawQr(rightX, y, color);
     };
 
     const drawTotals = (tx: number, ty: number, style: "band" | "plain" | "boxed", colors: { label: typeof gray; box: typeof ink; boxText: typeof paper; line: typeof gray }) => {
@@ -379,6 +385,9 @@ export function InvoiceGenerator() {
       page.drawText("INVOICE", { x: M, y: 792 - 50, size: 26, font: helvB, color: textColor });
       page.drawText(num, { x: 612 - M - monoB.widthOfTextAtSize(num, 13), y: 792 - 46, size: 13, font: monoB, color: textColor });
     };
+
+let codeX = M + W;
+    let codeColor: typeof ink = ink;
 
     if (template === "minimal") {
       page.drawText("INVOICE", { x: M, y: 736, size: 9, font: helv, color: midGray });
@@ -483,6 +492,250 @@ export function InvoiceGenerator() {
       const ty = drawTotals(M + W * 0.58, rowY - 36, "band", { label: gray, box: red, boxText: ink, line: gray });
       drawNotes(ty, helv);
       drawFooter(helv, gray);
+    } else if (template === "receipt") {
+      const Wc = W * 0.62;
+      const x0 = M + (W - Wc) / 2;
+      const cx = 612 / 2;
+      const center = (text: string, size: number, f: typeof helv, y: number, color: typeof ink = ink) =>
+        page.drawText(text, { x: cx - f.widthOfTextAtSize(text, size) / 2, y, size, font: f, color });
+
+      center("INVOICE", 14, helvB, 736);
+      center(num, 9, mono, 718, gray);
+      page.drawLine({ start: { x: x0, y: 706 }, end: { x: x0 + Wc, y: 706 }, thickness: 0.7, color: ink });
+      center(sFrom.toUpperCase(), 11, helvB, 684);
+      if (sFromEmail) center(sFromEmail, 8, helv, 669, gray);
+      sFromAddr.forEach((l, i) => center(l, 8, helv, 656 - i * 11, gray));
+      const addrBottom = 656 - (sFromAddr.length - 1) * 11;
+      page.drawLine({ start: { x: x0, y: addrBottom - 16 }, end: { x: x0 + Wc, y: addrBottom - 16 }, thickness: 0.7, color: ink });
+      center("BILL TO", 8, helvB, addrBottom - 30, gray);
+      center(sClient.toUpperCase(), 10, helvB, addrBottom - 45);
+      if (sClientEmail) center(sClientEmail, 8, helv, addrBottom - 59, gray);
+      sClientAddr.forEach((l, i) => center(l, 8, helv, addrBottom - 72 - i * 11, gray));
+      const dueY = addrBottom - 72 - (sClientAddr.length - 1) * 11;
+      const meta = `DATE ${date}${dueDate.trim() ? "   DUE " + sanitize(dueDate) : ""}`;
+      center(meta, 8, mono, dueY - 24, gray);
+      if (sTerms) center(`TERMS ${sTerms}`, 8, mono, dueY - 36, gray);
+
+      const headY = dueY - 58;
+      page.drawText("DESCRIPTION", { x: x0, y: headY, size: 8, font: helvB, color: gray });
+      page.drawText("QTY", { x: x0 + Wc * 0.62 - helvB.widthOfTextAtSize("QTY", 8), y: headY, size: 8, font: helvB, color: gray });
+      page.drawText("RATE", { x: x0 + Wc * 0.84 - helvB.widthOfTextAtSize("RATE", 8), y: headY, size: 8, font: helvB, color: gray });
+      page.drawText("AMOUNT", { x: x0 + Wc - helvB.widthOfTextAtSize("AMOUNT", 8), y: headY, size: 8, font: helvB, color: gray });
+      page.drawLine({ start: { x: x0, y: headY - 6 }, end: { x: x0 + Wc, y: headY - 6 }, thickness: 0.5, color: gray });
+      let rowY = headY - 26;
+      visible.forEach((it) => {
+        page.drawText(sanitize(it.desc), { x: x0, y: rowY, size: 10, font: helv, color: ink, maxWidth: Wc * 0.48 });
+        fitRight(it.qty, 10, mono, x0 + Wc * 0.62, rowY, Wc * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, x0 + Wc * 0.84, rowY, Wc * 0.16);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, x0 + Wc, rowY, Wc * 0.14);
+        rowY -= 22;
+      });
+      page.drawLine({ start: { x: x0, y: rowY - 4 }, end: { x: x0 + Wc, y: rowY - 4 }, thickness: 0.7, color: ink });
+
+      let ty = rowY - 26;
+      const totLine = (label: string, val: string, color: typeof ink = ink) => {
+        page.drawText(label, { x: x0 + Wc * 0.5 - helvB.widthOfTextAtSize(label, 9) / 2, y: ty, size: 9, font: helvB, color: gray });
+        fitRight(val, 9, mono, x0 + Wc, ty, Wc * 0.4, color);
+      };
+      totLine("SUBTOTAL", pm(sub));
+      if (disc > 0) { ty -= 16; totLine(`DISCOUNT (${sanitize(discountPct)}%)`, `-${pm(disc)}`); }
+      if (taxAmt > 0) { ty -= 16; totLine(`TAX (${sanitize(taxPct)}%)`, pm(taxAmt)); }
+      ty -= 24;
+      page.drawLine({ start: { x: x0, y: ty + 10 }, end: { x: x0 + Wc, y: ty + 10 }, thickness: 0.7, color: ink });
+      page.drawText("TOTAL", { x: cx - helvB.widthOfTextAtSize("TOTAL", 11) / 2, y: ty, size: 11, font: helvB, color: ink });
+      fitRight(pm(tot), 11, monoB, x0 + Wc, ty, Wc * 0.4);
+
+      if (sNotes) {
+        page.drawText("NOTES", { x: cx - helvB.widthOfTextAtSize("NOTES", 8) / 2, y: ty - 34, size: 8, font: helvB, color: gray });
+        page.drawText(sNotes, { x: x0, y: ty - 46, size: 9, font: helv, color: ink, maxWidth: Wc });
+      }
+      drawFooter(helv, midGray);
+      codeX = x0 + Wc;
+    } else if (template === "invert") {
+      page.drawRectangle({ x: 0, y: 0, width: 612, height: 792, color: ink });
+      const light = rgb(0.35, 0.35, 0.35);
+      page.drawText("INVOICE", { x: M, y: 736, size: 26, font: helvB, color: paper });
+      right(num, 13, monoB, 612 - M, 736, paper);
+      let y = 686;
+      page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: paper });
+      if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: light });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: y - 27 - i * 12, size: 8, font: helv, color: light }));
+
+      const cx = M + W * 0.55;
+      const cTop = y - sFromAddr.length * 12;
+      page.drawText("TO", { x: cx, y: cTop, size: 9, font: helvB, color: light });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: paper });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: light });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: light }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: light });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: light });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: light });
+
+      const headY = Math.min(y - 74, dueY - (sTerms ? 36 : 20));
+      page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: paper });
+      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: paper });
+      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: paper });
+      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: paper });
+      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 1, color: paper });
+      let rowY = headY - 26;
+      visible.forEach((it) => {
+        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: paper, maxWidth: W * 0.56 });
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12, paper);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18, paper);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1, paper);
+        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.4, color: light });
+        rowY -= 22;
+      });
+      page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 1, color: paper });
+
+      let ty = rowY - 36;
+      page.drawText("SUBTOTAL", { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: light });
+      right(pm(sub), 9, mono, M + W, ty, paper);
+      if (disc > 0) {
+        ty -= 18;
+        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: light });
+        right(`-${pm(disc)}`, 9, mono, M + W, ty, paper);
+      }
+      if (taxAmt > 0) {
+        ty -= 18;
+        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: light });
+        right(pm(taxAmt), 9, mono, M + W, ty, paper);
+      }
+      ty -= 30;
+      page.drawRectangle({ x: M + W * 0.58, y: ty - 10, width: W * 0.42, height: 30, color: yellow });
+      page.drawText("TOTAL", { x: M + W * 0.58 + 10, y: ty, size: 10, font: helvB, color: ink });
+      right(pm(tot), 11, monoB, M + W, ty, ink);
+
+      if (sNotes) {
+        page.drawText("NOTES", { x: M, y: ty - 58, size: 8, font: helvB, color: light });
+        page.drawText(sNotes, { x: M, y: ty - 70, size: 9, font: helv, color: paper, maxWidth: W * 0.9 });
+      }
+      page.drawText("FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls", {
+        x: M,
+        y: 40,
+        size: 7,
+        font: helv,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      codeColor = paper;
+    } else if (template === "ledger") {
+      page.drawText("INVOICE", { x: M, y: 736, size: 12, font: helvB, color: ink });
+      right(num, 9, mono, 612 - M, 736, gray);
+      page.drawLine({ start: { x: M, y: 726 }, end: { x: M + W, y: 726 }, thickness: 1.5, color: ink });
+      page.drawLine({ start: { x: M, y: 720 }, end: { x: M + W, y: 720 }, thickness: 0.5, color: gray });
+
+      page.drawText("FROM", { x: M, y: 696, size: 8, font: helvB, color: gray });
+      page.drawText(sFrom.toUpperCase(), { x: M, y: 682, size: 11, font: helvB, color: ink });
+      if (sFromEmail) page.drawText(sFromEmail, { x: M, y: 668, size: 8, font: helv, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: 654 - i * 12, size: 8, font: helv, color: gray }));
+
+      const cx = M + W * 0.55;
+      const cTop = 696 - sFromAddr.length * 12;
+      page.drawText("BILL TO", { x: cx, y: cTop, size: 8, font: helvB, color: gray });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: ink });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 8, font: helv, color: gray });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: gray }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 8, font: mono, color: gray });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 12, size: 8, font: mono, color: gray });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 24, size: 8, font: mono, color: gray });
+
+      const headY = Math.min(616, dueY - (sTerms ? 34 : 16));
+      page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: ink });
+      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: ink });
+      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: ink });
+      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: ink });
+      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 1, color: ink });
+      let rowY = headY - 26;
+      visible.forEach((it) => {
+        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
+        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.4, color: gray });
+        rowY -= 22;
+      });
+      page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 1.5, color: ink });
+      page.drawLine({ start: { x: M + W * 0.6, y: headY - 6 }, end: { x: M + W * 0.6, y: rowY }, thickness: 0.4, color: gray });
+      page.drawLine({ start: { x: M + W * 0.78, y: headY - 6 }, end: { x: M + W * 0.78, y: rowY }, thickness: 0.4, color: gray });
+      page.drawLine({ start: { x: M + W * 0.9, y: headY - 6 }, end: { x: M + W * 0.9, y: rowY }, thickness: 0.4, color: gray });
+
+      const ty = drawTotals(M + W * 0.58, rowY - 34, "plain", { label: gray, box: ink, boxText: paper, line: gray });
+      drawNotes(ty, helv);
+      drawFooter(helv, gray);
+    } else if (template === "blueprint") {
+      for (let x = 0; x <= 612; x += 26)
+        page.drawLine({ start: { x, y: 0 }, end: { x, y: 792 }, thickness: 0.3, color: lightBlue, opacity: 0.6 });
+      for (let y = 0; y <= 792; y += 26)
+        page.drawLine({ start: { x: 0, y }, end: { x: 612, y }, thickness: 0.3, color: lightBlue, opacity: 0.6 });
+
+      page.drawText("INVOICE", { x: M, y: 740, size: 24, font: helvB, color: blue });
+      right(num, 11, mono, 612 - M, 740, blue);
+      page.drawLine({ start: { x: M, y: 726 }, end: { x: M + W, y: 726 }, thickness: 2, color: blue });
+      let y = 696;
+      page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: blue });
+      if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: blue });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: y - 27 - i * 12, size: 8, font: helv, color: blue }));
+
+      const cx = M + W * 0.55;
+      const cTop = y - sFromAddr.length * 12;
+      page.drawText("TO", { x: cx, y: cTop, size: 9, font: helvB, color: blue });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: blue });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: blue });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: blue }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: blue });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: blue });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: blue });
+
+      const headY = Math.min(y - 74, dueY - (sTerms ? 36 : 20));
+      page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: blue });
+      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: blue });
+      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: blue });
+      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: blue });
+      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 1, color: blue });
+      let rowY = headY - 26;
+      visible.forEach((it) => {
+        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: blue, maxWidth: W * 0.56 });
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12, blue);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18, blue);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1, blue);
+        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.3, color: lightBlue });
+        rowY -= 22;
+      });
+      page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 2, color: blue });
+
+      let ty = rowY - 36;
+      page.drawText("SUBTOTAL", { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: blue });
+      right(pm(sub), 9, mono, M + W, ty, blue);
+      if (disc > 0) {
+        ty -= 18;
+        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: blue });
+        right(`-${pm(disc)}`, 9, mono, M + W, ty, blue);
+      }
+      if (taxAmt > 0) {
+        ty -= 18;
+        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: M + W * 0.58, y: ty, size: 9, font: helvB, color: blue });
+        right(pm(taxAmt), 9, mono, M + W, ty, blue);
+      }
+      ty -= 30;
+      page.drawRectangle({ x: M + W * 0.58, y: ty - 10, width: W * 0.42, height: 30, color: blue });
+      page.drawText("TOTAL", { x: M + W * 0.58 + 10, y: ty, size: 10, font: helvB, color: paper });
+      right(pm(tot), 11, monoB, M + W, ty, paper);
+
+      if (sNotes) {
+        page.drawText("NOTES", { x: M, y: ty - 58, size: 8, font: helvB, color: blue });
+        page.drawText(sNotes, { x: M, y: ty - 70, size: 9, font: helv, color: blue, maxWidth: W * 0.9 });
+      }
+      page.drawText("FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls", {
+        x: M,
+        y: 40,
+        size: 7,
+        font: helv,
+        color: blue,
+      });
+      codeColor = blue;
     } else {
       drawBand(ink, paper);
       let y = 792 - 76 - 30;
@@ -507,7 +760,7 @@ export function InvoiceGenerator() {
       drawFooter(helv, gray);
     }
 
-    drawCode();
+    drawCode(codeX, 58, codeColor);
 
     const bytes = await doc.save();
     return new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" });
@@ -910,7 +1163,7 @@ interface PreviewProps {
 
 const addrLines = (a: string) => a.split("\n").slice(0, 3).filter(Boolean);
 
-const CodeBlock = ({ code, value }: { code: "barcode" | "qr"; value: string }) => {
+const CodeBlock = ({ code, value, color = "#111" }: { code: "barcode" | "qr"; value: string; color?: string }) => {
   if (code === "barcode") {
     const bits = code39Bits(value);
     const narrow = 1.5;
@@ -925,7 +1178,7 @@ const CodeBlock = ({ code, value }: { code: "barcode" | "qr"; value: string }) =
       <div className="flex flex-col items-end gap-1">
         <svg width={x} height={34} className="block" shapeRendering="crispEdges">
           {rects.map((rc, i) => (
-            <rect key={i} x={rc.x} y={0} width={rc.w} height={34} fill="#111" />
+            <rect key={i} x={rc.x} y={0} width={rc.w} height={34} fill={color} />
           ))}
         </svg>
         <span className="font-mono text-[7px] font-bold tracking-[0.2em] text-ink/50">{value}</span>
@@ -944,7 +1197,7 @@ const CodeBlock = ({ code, value }: { code: "barcode" | "qr"; value: string }) =
   return (
     <svg width={n * cell} height={n * cell} className="block" shapeRendering="crispEdges">
       {rects.map((rc, i) => (
-        <rect key={i} x={rc.x} y={rc.y} width={cell} height={cell} fill="#111" />
+        <rect key={i} x={rc.x} y={rc.y} width={cell} height={cell} fill={color} />
       ))}
     </svg>
   );
@@ -1005,6 +1258,12 @@ function PreviewPage(props: PreviewProps) {
   const codeBlock = code !== "none" && (
     <div className="mt-3 flex justify-end">
       <CodeBlock code={code} value={codeVal} />
+    </div>
+  );
+
+  const codeBlockInvert = code !== "none" && (
+    <div className="mt-3 flex justify-end">
+      <CodeBlock code={code} value={codeVal} color="#F5F0E8" />
     </div>
   );
 
@@ -1205,6 +1464,340 @@ function PreviewPage(props: PreviewProps) {
         )}
         {codeBlock}
         {footer}
+      </div>
+    );
+  }
+
+  if (template === "receipt") {
+    return (
+      <div className="flex h-full w-full flex-col items-center bg-white px-10 pb-10 pt-10 font-mono text-ink">
+        <p className="text-lg font-bold uppercase tracking-[0.3em]">Invoice</p>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-ink/50">{num}</p>
+        <div className="mt-4 w-full max-w-md border-t-2 border-dashed border-ink/40" />
+        <p className="mt-6 text-base font-bold uppercase">{sFrom}</p>
+        {fromEmail.trim() && <p className="mt-1 text-center text-[10px] text-ink/50">{fromEmail}</p>}
+        {addrLines(fromAddress).map((l) => (
+          <p key={l} className="text-center text-[10px] leading-relaxed text-ink/50">{l}</p>
+        ))}
+        <div className="mt-6 w-full max-w-md border-t-2 border-dashed border-ink/40" />
+        <p className="mt-6 text-[9px] font-bold uppercase tracking-widest text-ink/50">Bill to</p>
+        <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+        {clientEmail.trim() && <p className="mt-1 text-center text-[10px] text-ink/50">{clientEmail}</p>}
+        {addrLines(clientAddress).map((l) => (
+          <p key={l} className="text-center text-[10px] leading-relaxed text-ink/50">{l}</p>
+        ))}
+        <p className="mt-3 text-[10px] text-ink/60">
+          DATE&nbsp;&nbsp;{date}
+          {dueDate && <>{"   "}DUE&nbsp;&nbsp;{dueDate}</>}
+        </p>
+        {terms.trim() && <p className="text-[10px] text-ink/60">TERMS&nbsp;&nbsp;{terms}</p>}
+
+        <div className="mt-8 w-full max-w-sm">
+          <div className={`${ROW_GRID} border-b border-ink/30 pb-1.5 text-[9px] font-bold uppercase tracking-widest text-ink/50`}>
+            <span>Description</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Rate</span>
+            <span className="text-right">Amount</span>
+          </div>
+          <div className="mt-1">{rows}</div>
+          <div className="mt-5 flex flex-col items-center gap-1 text-[11px]">
+            <div className="flex w-56 justify-between text-ink/60">
+              <span>SUBTOTAL</span>
+              <span>{money(props.subtotal)}</span>
+            </div>
+            {props.discount > 0 && (
+              <div className="flex w-56 justify-between text-ink/60">
+                <span>DISCOUNT ({discountPct}%)</span>
+                <span>-{money(props.discount)}</span>
+              </div>
+            )}
+            {props.tax > 0 && (
+              <div className="flex w-56 justify-between text-ink/60">
+                <span>TAX ({taxPct}%)</span>
+                <span>{money(props.tax)}</span>
+              </div>
+            )}
+            <div className="mt-1 w-full max-w-md border-t-2 border-dashed border-ink/40 pt-1.5" />
+            <div className="flex w-56 justify-between font-bold">
+              <span>TOTAL</span>
+              <span>{money(props.total)}</span>
+            </div>
+          </div>
+        </div>
+        {notes.trim() && (
+          <div className="mt-6 w-full max-w-sm text-center">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">Notes</p>
+            <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
+          </div>
+        )}
+        {codeBlock}
+        {footer}
+      </div>
+    );
+  }
+
+  if (template === "invert") {
+    return (
+      <div className="flex h-full w-full flex-col bg-ink pb-10 pt-10 font-mono text-paper">
+        <div className="flex items-baseline justify-between px-14">
+          <span className="font-display text-3xl font-bold uppercase tracking-tight">Invoice</span>
+          <span className="text-sm font-bold text-paper/80">{num}</span>
+        </div>
+        <div className="flex flex-1 flex-col px-14 pt-6">
+          <div className="flex justify-between gap-8">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-paper/40">From</p>
+              <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
+              {fromEmail.trim() && <p className="text-[10px] text-paper/50">{fromEmail}</p>}
+              {addrLines(fromAddress).map((l) => (
+                <p key={l} className="text-[10px] leading-relaxed text-paper/50">{l}</p>
+              ))}
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-paper/40">To</p>
+              <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+              {clientEmail.trim() && <p className="text-[10px] text-paper/50">{clientEmail}</p>}
+              {addrLines(clientAddress).map((l) => (
+                <p key={l} className="text-[10px] leading-relaxed text-paper/50">{l}</p>
+              ))}
+              <p className="mt-2 text-[10px] text-paper/50">DATE&nbsp;&nbsp;{date}</p>
+              {dueDate && <p className="text-[10px] text-paper/50">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
+              {terms.trim() && <p className="text-[10px] text-paper/50">TERMS&nbsp;&nbsp;{terms}</p>}
+            </div>
+          </div>
+
+          <div className={`${ROW_GRID} mt-8 border-y border-paper/40 py-2 text-[9px] font-bold uppercase tracking-widest text-paper/70`}>
+            <span>Description</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Rate</span>
+            <span className="text-right">Amount</span>
+          </div>
+          <div className="mt-1 flex-1">
+            {visible.map((it, i) => (
+              <div key={i} className={`${ROW_GRID} border-b border-paper/15 py-2 text-[11px]`}>
+                <span className="truncate">{it.desc}</span>
+                <span className="truncate text-right">{it.qty}</span>
+                <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+                <span className="truncate text-right font-bold">
+                  {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex justify-end">
+            <div className="w-64 space-y-1.5 text-[11px]">
+              <div className="flex justify-between text-paper/60">
+                <span>SUBTOTAL</span>
+                <span>{money(props.subtotal)}</span>
+              </div>
+              {props.discount > 0 && (
+                <div className="flex justify-between text-paper/60">
+                  <span>DISCOUNT ({discountPct}%)</span>
+                  <span>-{money(props.discount)}</span>
+                </div>
+              )}
+              {props.tax > 0 && (
+                <div className="flex justify-between text-paper/60">
+                  <span>TAX ({taxPct}%)</span>
+                  <span>{money(props.tax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between bg-yellow px-3 py-2 font-bold text-ink">
+                <span>TOTAL</span>
+                <span>{money(props.total)}</span>
+              </div>
+            </div>
+          </div>
+          {notes.trim() && (
+            <div className="mt-6">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-paper/40">Notes</p>
+              <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-paper/60">{notes}</p>
+            </div>
+          )}
+          {codeBlockInvert}
+          <p className="mt-auto pt-4 text-[8px] text-paper/30">
+            FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "ledger") {
+    return (
+      <div className="flex h-full w-full flex-col bg-white px-14 pb-10 pt-10 font-mono text-ink">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-bold uppercase tracking-[0.3em]">Invoice</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ink/50">{num}</span>
+        </div>
+        <div className="mt-2 border-t-2 border-ink" />
+        <div className="mt-1 border-t border-ink/30" />
+        <div className="mt-6 flex justify-between gap-8">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">From</p>
+            <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
+            {fromEmail.trim() && <p className="text-[10px] text-ink/50">{fromEmail}</p>}
+            {addrLines(fromAddress).map((l) => (
+              <p key={l} className="text-[10px] leading-relaxed text-ink/50">{l}</p>
+            ))}
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">Bill to</p>
+            <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+            {clientEmail.trim() && <p className="text-[10px] text-ink/50">{clientEmail}</p>}
+            {addrLines(clientAddress).map((l) => (
+              <p key={l} className="text-[10px] leading-relaxed text-ink/50">{l}</p>
+            ))}
+            <p className="mt-2 text-[10px] text-ink/60">DATE&nbsp;&nbsp;{date}</p>
+            {dueDate && <p className="text-[10px] text-ink/60">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
+            {terms.trim() && <p className="text-[10px] text-ink/60">TERMS&nbsp;&nbsp;{terms}</p>}
+          </div>
+        </div>
+
+        <div className="mt-8 flex-1">
+          <div className={`${ROW_GRID} border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest`}>
+            <span className="pr-2">Description</span>
+            <span className="border-l border-ink/30 pl-2 text-right">Qty</span>
+            <span className="border-l border-ink/30 pl-2 text-right">Rate</span>
+            <span className="border-l border-ink/30 pl-2 text-right">Amount</span>
+          </div>
+          {visible.map((it, i) => (
+            <div key={i} className={`${ROW_GRID} border-b border-ink/20 py-2 text-[11px]`}>
+              <span className="truncate pr-2">{it.desc}</span>
+              <span className="truncate border-l border-ink/20 pl-2 text-right">{it.qty}</span>
+              <span className="truncate border-l border-ink/20 pl-2 text-right">{money(parseFloat(it.rate) || 0)}</span>
+              <span className="truncate border-l border-ink/20 pl-2 text-right font-bold">
+                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+              </span>
+            </div>
+          ))}
+          <div className="mt-6 flex justify-end">
+            <div className="w-64 space-y-1.5 text-[11px]">
+              <div className="flex justify-between">
+                <span>SUBTOTAL</span>
+                <span>{money(props.subtotal)}</span>
+              </div>
+              {props.discount > 0 && (
+                <div className="flex justify-between">
+                  <span>DISCOUNT ({discountPct}%)</span>
+                  <span>-{money(props.discount)}</span>
+                </div>
+              )}
+              {props.tax > 0 && (
+                <div className="flex justify-between">
+                  <span>TAX ({taxPct}%)</span>
+                  <span>{money(props.tax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t-2 border-ink pt-1.5 font-bold">
+                <span>TOTAL</span>
+                <span>{money(props.total)}</span>
+              </div>
+            </div>
+          </div>
+          {notes.trim() && (
+            <div className="mt-6">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">Notes</p>
+              <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
+            </div>
+          )}
+          {codeBlock}
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "blueprint") {
+    return (
+      <div
+        className="flex h-full w-full flex-col bg-white pb-10 pt-10 font-mono text-blue"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, rgba(77,141,255,0.12) 0, rgba(77,141,255,0.12) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(77,141,255,0.12) 0, rgba(77,141,255,0.12) 1px, transparent 1px, transparent 26px)",
+        }}
+      >
+        <div className="flex items-baseline justify-between px-14">
+          <span className="font-display text-3xl font-bold uppercase tracking-tight">Invoice</span>
+          <span className="text-sm font-bold">{num}</span>
+        </div>
+        <div className="mx-14 mt-2 border-t-2 border-blue" />
+        <div className="flex flex-1 flex-col px-14 pt-6">
+          <div className="flex justify-between gap-8">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-blue/70">From</p>
+              <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
+              {fromEmail.trim() && <p className="text-[10px] text-blue/70">{fromEmail}</p>}
+              {addrLines(fromAddress).map((l) => (
+                <p key={l} className="text-[10px] leading-relaxed text-blue/70">{l}</p>
+              ))}
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-blue/70">To</p>
+              <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+              {clientEmail.trim() && <p className="text-[10px] text-blue/70">{clientEmail}</p>}
+              {addrLines(clientAddress).map((l) => (
+                <p key={l} className="text-[10px] leading-relaxed text-blue/70">{l}</p>
+              ))}
+              <p className="mt-2 text-[10px] text-blue/70">DATE&nbsp;&nbsp;{date}</p>
+              {dueDate && <p className="text-[10px] text-blue/70">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
+              {terms.trim() && <p className="text-[10px] text-blue/70">TERMS&nbsp;&nbsp;{terms}</p>}
+            </div>
+          </div>
+
+          <div className={`${ROW_GRID} mt-8 border-b-2 border-blue pb-2 text-[9px] font-bold uppercase tracking-widest`}>
+            <span>Description</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Rate</span>
+            <span className="text-right">Amount</span>
+          </div>
+          <div className="mt-1 flex-1">
+            {visible.map((it, i) => (
+              <div key={i} className={`${ROW_GRID} border-b border-blue/30 py-2 text-[11px]`}>
+                <span className="truncate">{it.desc}</span>
+                <span className="truncate text-right">{it.qty}</span>
+                <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+                <span className="truncate text-right font-bold">
+                  {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex justify-end">
+            <div className="w-64 space-y-1.5 text-[11px]">
+              <div className="flex justify-between text-blue/70">
+                <span>SUBTOTAL</span>
+                <span>{money(props.subtotal)}</span>
+              </div>
+              {props.discount > 0 && (
+                <div className="flex justify-between text-blue/70">
+                  <span>DISCOUNT ({discountPct}%)</span>
+                  <span>-{money(props.discount)}</span>
+                </div>
+              )}
+              {props.tax > 0 && (
+                <div className="flex justify-between text-blue/70">
+                  <span>TAX ({taxPct}%)</span>
+                  <span>{money(props.tax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between bg-blue px-3 py-2 font-bold text-white">
+                <span>TOTAL</span>
+                <span>{money(props.total)}</span>
+              </div>
+            </div>
+          </div>
+          {notes.trim() && (
+            <div className="mt-6">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-blue/70">Notes</p>
+              <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-blue/70">{notes}</p>
+            </div>
+          )}
+          {codeBlock}
+          <p className="mt-auto pt-4 text-[8px] text-blue/50">
+            FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls
+          </p>
+        </div>
       </div>
     );
   }
