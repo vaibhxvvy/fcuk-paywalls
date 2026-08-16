@@ -64,6 +64,13 @@ import {
   LayoutGrid,
   Map,
   CalendarPlus,
+  FileScan,
+  FileImage,
+  LockOpen,
+  AudioLines,
+  Smartphone,
+  ImageIcon,
+  RefreshCcw,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -135,6 +142,14 @@ const PasswordVault = lazy(() => import("./PasswordVault/PasswordVault").then((m
 const CollageForge = lazy(() => import("./CollageForge/CollageForge").then((m) => ({ default: m.CollageForge })));
 const SitemapForge = lazy(() => import("./SitemapForge/SitemapForge").then((m) => ({ default: m.SitemapForge })));
 const EventForge = lazy(() => import("./EventForge/EventForge").then((m) => ({ default: m.EventForge })));
+const OcrForge = lazy(() => import("./OcrForge/OcrForge").then((m) => ({ default: m.OcrForge })));
+const HeicForge = lazy(() => import("./HeicForge/HeicForge").then((m) => ({ default: m.HeicForge })));
+const PdfUnlocker = lazy(() => import("./PdfUnlocker/PdfUnlocker").then((m) => ({ default: m.PdfUnlocker })));
+const AudioJoiner = lazy(() => import("./AudioJoiner/AudioJoiner").then((m) => ({ default: m.AudioJoiner })));
+const MockupForge = lazy(() => import("./MockupForge/MockupForge").then((m) => ({ default: m.MockupForge })));
+const GifForge = lazy(() => import("./GifForge/GifForge").then((m) => ({ default: m.GifForge })));
+const PhotoLab = lazy(() => import("./PhotoLab/PhotoLab").then((m) => ({ default: m.PhotoLab })));
+const PdfOrganizer = lazy(() => import("./PdfOrganizer/PdfOrganizer").then((m) => ({ default: m.PdfOrganizer })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -733,6 +748,78 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: CalendarPlus,
     status: "live",
   },
+  {
+    id: "ocr-forge",
+    category: "pdf",
+    name: "OCR forge",
+    description:
+      "Read text out of any image or scanned PDF, page by page — Tesseract runs in this tab. Adobe gives you two free OCR tasks before the signup wall and hides the rest behind Pro.",
+    icon: FileScan,
+    status: "live",
+  },
+  {
+    id: "heic-forge",
+    category: "image",
+    name: "HEIC converter",
+    description:
+      "Turn iPhone photos into JPG, PNG or WebP — in batches, with quality control. heic.now lets you convert 20 a day before Premium at $9.99 a month.",
+    icon: FileImage,
+    status: "live",
+  },
+  {
+    id: "pdf-unlocker",
+    category: "pdf",
+    name: "PDF unlocker",
+    description:
+      "Strip print, copy and edit locks off a PDF, locally. SmallPDF gives you 2 unlock tasks a day before Pro at $12 a month; locks are just flags.",
+    icon: LockOpen,
+    status: "live",
+  },
+  {
+    id: "audio-joiner",
+    category: "media",
+    name: "Audio joiner",
+    description:
+      "Stitch audio files together in the order you want, rendered on your machine. Clideo watermarks free merges and audio-joiner.com meters your daily joins.",
+    icon: AudioLines,
+    status: "live",
+  },
+  {
+    id: "mockup-forge",
+    category: "image",
+    name: "Mockup forge",
+    description:
+      "Drop a design into a phone, laptop or tablet frame and export a clean PNG. Placeit's free tier only hands out watermarked previews — the frame is a rounded rectangle.",
+    icon: Smartphone,
+    status: "live",
+  },
+  {
+    id: "gif-forge",
+    category: "image",
+    name: "GIF optimizer",
+    description:
+      "Shrink a GIF by dropping frames, cutting width and reducing the palette — re-encoded locally. The credit-metered compressors bill per megabyte shaved.",
+    icon: Film,
+    status: "live",
+  },
+  {
+    id: "photo-lab",
+    category: "image",
+    name: "Photo lab",
+    description:
+      "Brightness, contrast, saturation, sepia, vignette and grain — live canvas edits, unlimited exports. The subscription darkrooms sell presets; the math is six sliders.",
+    icon: ImageIcon,
+    status: "live",
+  },
+  {
+    id: "pdf-organizer",
+    category: "pdf",
+    name: "PDF rotate & organizer",
+    description:
+      "Rotate pages and rearrange the stack with thumbnails — per page or all at once. Smallpdf doles out 2 tasks a day; rotating a page is a flag flip.",
+    icon: RefreshCcw,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -800,6 +887,14 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "collage-forge": () => <CollageForge />,
   "sitemap-forge": () => <SitemapForge />,
   "event-forge": () => <EventForge />,
+  "ocr-forge": () => <OcrForge />,
+  "heic-forge": () => <HeicForge />,
+  "pdf-unlocker": () => <PdfUnlocker />,
+  "audio-joiner": () => <AudioJoiner />,
+  "mockup-forge": () => <MockupForge />,
+  "gif-forge": () => <GifForge />,
+  "photo-lab": () => <PhotoLab />,
+  "pdf-organizer": () => <PdfOrganizer />,
 };
 
 interface BuiltinToolsProps {
