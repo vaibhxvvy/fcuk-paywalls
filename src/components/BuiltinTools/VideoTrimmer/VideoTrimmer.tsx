@@ -23,11 +23,14 @@ export function VideoTrimmer() {
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const rafRef = useRef(0);
   const barRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<"start" | "end" | null>(null);
+  const watchRef = useRef(0);
+  const failRef = useRef(false);
+  const lastTRef = useRef(-1);
 
   const seek = (t: number) => {
+    if (state === "recording") return;
     const v = videoRef.current;
     if (v && Number.isFinite(t)) v.currentTime = t;
   };
@@ -42,7 +45,7 @@ export function VideoTrimmer() {
   };
 
   const onBarDown = (e: React.PointerEvent) => {
-    if (!duration || !barRef.current) return;
+    if (!duration || !barRef.current || state === "recording") return;
     const rect = barRef.current.getBoundingClientRect();
     const startPx = (start / duration) * rect.width;
     const endPx = (end / duration) * rect.width;
@@ -69,7 +72,7 @@ export function VideoTrimmer() {
   };
 
   const onBarMove = (e: React.PointerEvent) => {
-    if (!dragRef.current || !duration) return;
+    if (!dragRef.current || !duration || state === "recording") return;
     const t = barPos(e);
     if (dragRef.current === "start") {
       const s = clampStart(t);
@@ -89,31 +92,27 @@ export function VideoTrimmer() {
   const startPct = duration > 0 ? (start / duration) * 100 : 0;
   const endPct = duration > 0 ? (end / duration) * 100 : 0;
 
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    const onT = () => {
-      if (state === "recording") {
-        setProgress(v.currentTime - start);
-        if (v.currentTime >= end) stopRecording(true);
-      }
-    };
-    const onMeta = () => {
-      const d = v.duration;
-      setDuration(Number.isFinite(d) ? d : 0);
-      setEnd(Number.isFinite(d) ? d : 0);
-      setStart(0);
-    };
-    v.addEventListener("timeupdate", onT);
-    v.addEventListener("loadedmetadata", onMeta);
-    return () => {
-      v.removeEventListener("timeupdate", onT);
-      v.removeEventListener("loadedmetadata", onMeta);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [state, start, end]);
+  const onMeta = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const d = e.currentTarget.duration;
+    setDuration(Number.isFinite(d) ? d : 0);
+    setEnd(Number.isFinite(d) ? d : 0);
+    setStart(0);
+  };
 
-  useEffect(() => () => recRef.current?.stream.getTracks().forEach((t) => t.stop()), []);
+  const onTime = () => {
+    const v = videoRef.current;
+    if (!v || state !== "recording") return;
+    setProgress(v.currentTime - start);
+    if (v.currentTime >= end) stopRecording(true);
+  };
+
+  useEffect(() => {
+    const rec = recRef.current;
+    return () => {
+      rec?.stream.getTracks().forEach((t) => t.stop());
+      clearInterval(watchRef.current);
+    };
+  }, []);
 
   const onFile = (f: File) => {
     setName(f.name);
@@ -137,6 +136,7 @@ export function VideoTrimmer() {
   };
 
   const stopRecording = (auto: boolean) => {
+    clearInterval(watchRef.current);
     const rec = recRef.current;
     if (rec && rec.state !== "inactive") rec.stop();
     const v = videoRef.current;
@@ -147,11 +147,24 @@ export function VideoTrimmer() {
     if (!auto) setState("idle");
   };
 
-  const startRecording = () => {
+  const failCapture = (msg: string) => {
+    failRef.current = true;
+    setError(msg);
+    stopRecording(false);
+  };
+
+  const startRecording = async () => {
     const v = videoRef.current;
     if (!v || duration === 0) return;
     if (end - start < 0.25) {
       setError("The trimmed range is too short — pick at least a quarter second.");
+      return;
+    }
+    const cap = (v as HTMLVideoElement & { captureStream?(fps?: number): MediaStream }).captureStream;
+    if (typeof cap !== "function" || typeof MediaRecorder === "undefined") {
+      setError(
+        "This browser can't capture a playing video (needs captureStream + MediaRecorder — use Chrome, Edge or Safari 15+).",
+      );
       return;
     }
     setError(null);
@@ -159,7 +172,7 @@ export function VideoTrimmer() {
     setState("recording");
     setProgress(0);
     chunksRef.current = [];
-    const stream = (v as HTMLVideoElement & { captureStream(fps?: number): MediaStream }).captureStream(30);
+    const stream = cap.call(v, 30);
     const mime = pickMime();
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
     recRef.current = rec;
@@ -168,6 +181,11 @@ export function VideoTrimmer() {
     };
     rec.onstop = () => {
       stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+      if (failRef.current) {
+        failRef.current = false;
+        setState("idle");
+        return;
+      }
       const blob = new Blob(chunksRef.current, { type: mime.includes("mp4") ? "video/mp4" : "video/webm" });
       const out = URL.createObjectURL(blob);
       setDone(out);
@@ -175,7 +193,24 @@ export function VideoTrimmer() {
     };
     rec.start(250);
     v.currentTime = start;
-    v.play();
+    try {
+      await v.play();
+    } catch {
+      failCapture("Playback was blocked — the browser refused to play this video while recording.");
+      return;
+    }
+    lastTRef.current = v.currentTime;
+    watchRef.current = window.setInterval(() => {
+      const el = videoRef.current;
+      const r = recRef.current;
+      if (!el || !r || r.state !== "recording") return;
+      const t = el.currentTime;
+      if (lastTRef.current >= 0 && t - lastTRef.current < 0.01) {
+        failCapture("Playback stalled — the video stopped advancing. The capture was cancelled.");
+        return;
+      }
+      lastTRef.current = t;
+    }, 1000);
   };
 
   return (
@@ -215,6 +250,8 @@ export function VideoTrimmer() {
             <video
               ref={videoRef}
               src={url}
+              onLoadedMetadata={onMeta}
+              onTimeUpdate={onTime}
               className="mt-4 max-h-72 w-full rounded-md border-2 border-ink bg-ink object-contain"
               controls
             />
