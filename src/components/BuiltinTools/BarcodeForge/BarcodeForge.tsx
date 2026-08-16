@@ -157,57 +157,48 @@ export function BarcodeForge() {
   const [mode, setMode] = useState<Mode>("ean13");
   const [value, setValue] = useState("");
   const [scale, setScale] = useState(2);
-  const [error, setError] = useState<string | null>(null);
 
-  const normalize = (): { bits: string; label: string } | null => {
+  const normalize = (): { bits: string; label: string } | { error: string } | null => {
     const v = value.trim();
-    setError(null);
     if (mode === "ean13") {
       if (!/^\d{12,13}$/.test(v)) {
-        setError("EAN-13 needs 12 digits (check digit auto) or 13 digits.");
-        return null;
+        return { error: "EAN-13 needs 12 digits (check digit auto) or 13 digits." };
       }
       const d = v.length === 12 ? v + eanCheck(v) : v;
       const computed = eanCheck(d.slice(0, 12));
       if (v.length === 13 && d[12] !== computed) {
-        setError(`Check digit ${d[12]} doesn't match ${computed} — the barcode won't scan.`);
-        return null;
+        return { error: `Check digit ${d[12]} doesn't match ${computed} — the barcode won't scan.` };
       }
       return { bits: eanModules(d), label: d };
     }
     if (mode === "upca") {
       if (!/^\d{11,12}$/.test(v)) {
-        setError("UPC-A needs 11 digits (check digit auto) or 12 digits.");
-        return null;
+        return { error: "UPC-A needs 11 digits (check digit auto) or 12 digits." };
       }
       const d = v.length === 11 ? v + eanCheck("0" + v) : v;
       if (v.length === 12) {
         const computed = eanCheck("0" + v.slice(0, 11));
         if (d[11] !== computed) {
-          setError(`Check digit ${d[11]} doesn't match ${computed} — the barcode won't scan.`);
-          return null;
+          return { error: `Check digit ${d[11]} doesn't match ${computed} — the barcode won't scan.` };
         }
       }
       return { bits: eanModules("0" + d), label: d };
     }
     if (mode === "code128") {
       if (!v) {
-        setError("Type something to encode.");
-        return null;
+        return { error: "Type something to encode." };
       }
       for (const ch of v) {
         const c = ch.charCodeAt(0);
         if (c < 32 || c > 126) {
-          setError("Code 128 accepts plain ASCII text only.");
-          return null;
+          return { error: "Code 128 accepts plain ASCII text only." };
         }
       }
       return { bits: c128Modules(v), label: v };
     }
     if (mode === "code39") {
       if (!v) {
-        setError("Type something to encode.");
-        return null;
+        return { error: "Type something to encode." };
       }
       return { bits: c39Modules(v), label: v };
     }
@@ -249,7 +240,9 @@ export function BarcodeForge() {
   };
 
   const built = normalize();
-  const bits = built?.bits ?? "";
+  const error = built && "error" in built ? built.error : null;
+  const bits = built && "bits" in built ? built.bits : "";
+  const label = built && "bits" in built ? built.label : "";
   const rects = bits ? renderSvg(bits, scale) : [];
   const width = bits.length * scale;
 
@@ -271,10 +264,7 @@ export function BarcodeForge() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => {
-                  setMode(m.id);
-                  setError(null);
-                }}
+                onClick={() => setMode(m.id)}
                 title={m.hint}
                 className={
                   m.id === mode
@@ -330,7 +320,7 @@ export function BarcodeForge() {
             </span>
           </div>
 
-          {built ? (
+          {bits ? (
             <>
               <div className="mt-4 flex flex-1 items-center justify-center overflow-auto rounded-md border-2 border-ink bg-surface-muted p-6">
                 <div className="flex flex-col items-center gap-3 bg-white p-4 shadow-brutal-sm">
@@ -341,17 +331,17 @@ export function BarcodeForge() {
                     className="block h-auto max-w-full"
                     shapeRendering="crispEdges"
                     role="img"
-                    aria-label={`${mode} barcode for ${built.label}`}
+                    aria-label={`${mode} barcode for ${label}`}
                   >
                     {rects.map((rc, i) => (
                       <rect key={i} x={rc.x} y={0} width={rc.w} height={90} fill="#111" />
                     ))}
                   </svg>
-                  <span className="font-mono text-xs font-bold tracking-[0.35em] text-ink/70">{built.label}</span>
+                  <span className="font-mono text-xs font-bold tracking-[0.35em] text-ink/70">{label}</span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button onClick={() => downloadPng(bits, built.label)} className="uppercase">
+                <Button onClick={() => downloadPng(bits, label)} className="uppercase">
                   <FileDown className="h-4 w-4" aria-hidden="true" />
                   Download PNG
                 </Button>
@@ -365,7 +355,7 @@ export function BarcodeForge() {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `${mode}-${built.label.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 24)}.svg`;
+                    a.download = `${mode}-${label.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 24)}.svg`;
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(url), 5000);
                   }}

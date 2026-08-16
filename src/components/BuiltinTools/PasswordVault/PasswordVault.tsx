@@ -229,7 +229,7 @@ export function PasswordVault() {
   const nuke = async () => {
     if (!armed) {
       setArmed(true);
-      setNotice("NUKE ARMED — click again within 4s to wipe every entry.");
+      setNotice("NUKE ARMED — click again within 4s to wipe the vault entirely.");
       window.clearTimeout(armRef.current);
       armRef.current = window.setTimeout(() => {
         setArmed(false);
@@ -239,9 +239,18 @@ export function PasswordVault() {
     }
     window.clearTimeout(armRef.current);
     setArmed(false);
-    await persist([]);
+    localStorage.removeItem(VAULT_KEY);
+    keyRef.current = null;
+    setEntries([]);
     setEditing(null);
-    setNotice("Vault nuked — every entry is gone. Old backups still hold the previous copies.");
+    setLocked(true);
+    setPass("");
+    setRevealed(null);
+    setPwOpen(false);
+    setOldPass("");
+    setNewPass("");
+    setNewPass2("");
+    setError("Vault wiped — create a fresh one below with a new passphrase.");
   };
 
   const changePassword = async () => {
@@ -414,7 +423,6 @@ export function PasswordVault() {
             variant="destructive"
             onClick={() => void nuke()}
             className="uppercase"
-            disabled={entries.length === 0 && !armed}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             {armed ? "CONFIRM NUKE" : "Nuke vault"}

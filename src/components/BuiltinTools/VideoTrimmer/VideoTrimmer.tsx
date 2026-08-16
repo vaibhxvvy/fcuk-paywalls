@@ -24,6 +24,70 @@ export function VideoTrimmer() {
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const rafRef = useRef(0);
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<"start" | "end" | null>(null);
+
+  const seek = (t: number) => {
+    const v = videoRef.current;
+    if (v && Number.isFinite(t)) v.currentTime = t;
+  };
+
+  const clampStart = (t: number) => Math.max(0, Math.min(t, end - 0.25));
+  const clampEnd = (t: number) => Math.max(start + 0.25, Math.min(t, duration));
+
+  const barPos = (e: React.PointerEvent): number => {
+    const rect = barRef.current!.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    return frac * duration;
+  };
+
+  const onBarDown = (e: React.PointerEvent) => {
+    if (!duration || !barRef.current) return;
+    const rect = barRef.current.getBoundingClientRect();
+    const startPx = (start / duration) * rect.width;
+    const endPx = (end / duration) * rect.width;
+    const dStart = Math.abs(e.clientX - (rect.left + startPx));
+    const dEnd = Math.abs(e.clientX - (rect.left + endPx));
+    if (dStart < 16 && dStart <= dEnd) {
+      dragRef.current = "start";
+    } else if (dEnd < 16) {
+      dragRef.current = "end";
+    } else {
+      const t = barPos(e);
+      if (Math.abs(t - start) <= Math.abs(t - end)) {
+        const s = clampStart(t);
+        setStart(s);
+        seek(s);
+      } else {
+        const en = clampEnd(t);
+        setEnd(en);
+        seek(en);
+      }
+      dragRef.current = null;
+    }
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onBarMove = (e: React.PointerEvent) => {
+    if (!dragRef.current || !duration) return;
+    const t = barPos(e);
+    if (dragRef.current === "start") {
+      const s = clampStart(t);
+      setStart(s);
+      seek(s);
+    } else {
+      const en = clampEnd(t);
+      setEnd(en);
+      seek(en);
+    }
+  };
+
+  const onBarUp = () => {
+    dragRef.current = null;
+  };
+
+  const startPct = duration > 0 ? (start / duration) * 100 : 0;
+  const endPct = duration > 0 ? (end / duration) * 100 : 0;
 
   useEffect(() => {
     const v = videoRef.current;
@@ -35,8 +99,10 @@ export function VideoTrimmer() {
       }
     };
     const onMeta = () => {
-      setDuration(v.duration);
-      setEnd(v.duration);
+      const d = v.duration;
+      setDuration(Number.isFinite(d) ? d : 0);
+      setEnd(Number.isFinite(d) ? d : 0);
+      setStart(0);
     };
     v.addEventListener("timeupdate", onT);
     v.addEventListener("loadedmetadata", onMeta);
@@ -154,7 +220,39 @@ export function VideoTrimmer() {
             />
           )}
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4">
+            <div
+              ref={barRef}
+              onPointerDown={onBarDown}
+              onPointerMove={onBarMove}
+              onPointerUp={onBarUp}
+              className={`relative h-9 touch-none select-none ${duration > 0 ? "cursor-pointer" : "cursor-not-allowed"}`}
+              aria-label="Trim range — drag the yellow and red handles"
+            >
+              <div className="absolute inset-x-0 top-1/2 h-3.5 -translate-y-1/2 rounded-sm border-2 border-ink bg-surface-muted" />
+              <div
+                className="absolute top-1/2 h-3.5 -translate-y-1/2 bg-yellow/60"
+                style={{ left: `${startPct}%`, width: `${Math.max(endPct - startPct, 0)}%` }}
+              />
+              <div
+                className="absolute top-1/2 h-6 w-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-ink bg-yellow shadow-brutal-sm"
+                style={{ left: `${startPct}%` }}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute top-1/2 h-6 w-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-ink bg-red shadow-brutal-sm"
+                style={{ left: `${endPct}%` }}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="mt-1.5 flex justify-between font-mono text-[10px] font-bold text-ink/50">
+              <span>0:00</span>
+              <span>Drag the red end handle — the preview scrubs along</span>
+              <span>{fmt(duration)}</span>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="block">
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Start</span>
               <input
@@ -164,10 +262,9 @@ export function VideoTrimmer() {
                 step={0.05}
                 value={start}
                 onChange={(e) => {
-                  const s = Number(e.target.value);
-                  setStart(Math.min(s, end - 0.25));
-                  const v = videoRef.current;
-                  if (v) v.currentTime = s;
+                  const s = Math.min(Number(e.target.value), end - 0.25);
+                  setStart(s);
+                  seek(s);
                 }}
                 className="mt-2 w-full accent-ink"
               />
@@ -182,8 +279,9 @@ export function VideoTrimmer() {
                 step={0.05}
                 value={end}
                 onChange={(e) => {
-                  const en = Number(e.target.value);
-                  setEnd(Math.min(Math.max(en, start + 0.25), duration));
+                  const en = Math.min(Math.max(Number(e.target.value), start + 0.25), duration);
+                  setEnd(en);
+                  seek(en);
                 }}
                 className="mt-2 w-full accent-ink"
               />

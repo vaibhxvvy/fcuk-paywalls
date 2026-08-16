@@ -26,6 +26,7 @@ export function ScreenRecorder() {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number>(0);
+  const countRef = useRef(3);
 
   useEffect(() => {
     return () => {
@@ -33,6 +34,20 @@ export function ScreenRecorder() {
       clearInterval(timerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (elapsed >= MAX_SECONDS) stopRecording();
+  }, [elapsed]);
+
+  const beginRecording = () => {
+    const rec = recRef.current;
+    if (!rec) return;
+    setCountdown(null);
+    rec.start(250);
+    setRecording(true);
+    setElapsed(0);
+    timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+  };
 
   const remaining = () => {
     const stored = localStorage.getItem(DAILY_KEY);
@@ -89,32 +104,16 @@ export function ScreenRecorder() {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
         setDone(URL.createObjectURL(blob));
       };
-      const begin = () => {
-        rec.start(250);
-        setRecording(true);
-        setElapsed(0);
-        timerRef.current = window.setInterval(() => {
-          setElapsed((e) => {
-            if (e + 1 >= MAX_SECONDS) {
-              stopRecording();
-              return e;
-            }
-            return e + 1;
-          });
-        }, 1000);
-      };
+      countRef.current = 3;
       setCountdown(3);
-      const cd = setInterval(() => {
-        setCountdown((c) => {
-          if (c === null) return null;
-          if (c === 0) {
-            clearInterval(cd);
-            setCountdown(null);
-            begin();
-            return 0;
-          }
-          return c - 1;
-        });
+      const cd = window.setInterval(() => {
+        if (countRef.current <= 0) {
+          window.clearInterval(cd);
+          beginRecording();
+          return;
+        }
+        countRef.current -= 1;
+        setCountdown(countRef.current);
       }, 1000);
     } catch {
       if (streamRef.current) {
