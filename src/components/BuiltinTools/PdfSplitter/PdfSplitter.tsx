@@ -42,7 +42,7 @@ export function PdfSplitter() {
       const workerUrl = await import("pdfjs-dist/build/pdf.worker.min.mjs?url").then((m) => m.default as string);
       GlobalWorkerOptions.workerSrc = workerUrl;
       const buf = await f.arrayBuffer();
-      const doc = await getDocument({ data: new Uint8Array(buf) }).promise;
+      const doc = await getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
       docRef.current = { doc, buf, numPages: doc.numPages };
       const imgs: string[] = [];
       for (let i = 1; i <= doc.numPages; i++) {

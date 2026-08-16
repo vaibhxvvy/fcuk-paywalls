@@ -28,7 +28,7 @@ export function PdfUnlocker() {
       const buf = await file.arrayBuffer();
 
       const task = getDocument({
-        data: new Uint8Array(buf),
+        data: new Uint8Array(buf.slice(0)),
         password: password || undefined,
       });
       const doc = await task.promise;

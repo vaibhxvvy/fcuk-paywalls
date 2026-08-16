@@ -28,7 +28,7 @@ export function PdfOrganizer() {
       const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
       const workerUrl = await import("pdfjs-dist/build/pdf.worker.min.mjs?url").then((m) => m.default as string);
       GlobalWorkerOptions.workerSrc = workerUrl;
-      const doc = await getDocument({ data: new Uint8Array(buf) }).promise;
+      const doc = await getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
       const { PDFDocument } = await import("pdf-lib");
       const src = await PDFDocument.load(buf, { ignoreEncryption: true });
       srcDocRef.current = src;
