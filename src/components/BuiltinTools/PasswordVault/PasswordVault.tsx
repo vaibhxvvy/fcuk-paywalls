@@ -148,6 +148,12 @@ export function PasswordVault() {
   const [notice, setNotice] = useState<string | null>(null);
   const keyRef = useRef<CryptoKey | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [oldPass, setOldPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [newPass2, setNewPass2] = useState("");
+  const [armed, setArmed] = useState(false);
+  const armRef = useRef(0);
 
   const persist = async (list: Entry[]) => {
     if (!keyRef.current) return;
@@ -196,6 +202,12 @@ export function PasswordVault() {
     setRevealed(null);
     setEditing(null);
     setNotice(null);
+    setPwOpen(false);
+    setOldPass("");
+    setNewPass("");
+    setNewPass2("");
+    setArmed(false);
+    window.clearTimeout(armRef.current);
   };
 
   const save = async (e: FormEvent) => {
@@ -212,6 +224,58 @@ export function PasswordVault() {
   const remove = async (id: string) => {
     await persist(entries.filter((x) => x.id !== id));
     setNotice("Entry deleted. The bytes are gone for good.");
+  };
+
+  const nuke = async () => {
+    if (!armed) {
+      setArmed(true);
+      setNotice("NUKE ARMED — click again within 4s to wipe every entry.");
+      window.clearTimeout(armRef.current);
+      armRef.current = window.setTimeout(() => {
+        setArmed(false);
+        setNotice(null);
+      }, 4000);
+      return;
+    }
+    window.clearTimeout(armRef.current);
+    setArmed(false);
+    await persist([]);
+    setEditing(null);
+    setNotice("Vault nuked — every entry is gone. Old backups still hold the previous copies.");
+  };
+
+  const changePassword = async () => {
+    if (!oldPass || !newPass) {
+      setError("Fill in both the old and the new passphrase.");
+      return;
+    }
+    if (newPass !== newPass2) {
+      setError("The new passphrases don't match.");
+      return;
+    }
+    if (newPass.length < 8) {
+      setError("Make the new passphrase at least 8 characters.");
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(VAULT_KEY);
+      if (!raw) throw new Error("no-vault");
+      const p = JSON.parse(raw) as { salt: string };
+      const oldKey = await deriveKey(oldPass, b64.dec(p.salt));
+      const list = await decryptVault(oldKey, raw);
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const newKey = await deriveKey(newPass, salt);
+      localStorage.setItem(VAULT_KEY, await encryptVault(newKey, list, salt));
+      keyRef.current = newKey;
+      setPwOpen(false);
+      setOldPass("");
+      setNewPass("");
+      setNewPass2("");
+      setError(null);
+      setNotice("Passphrase changed — the old one no longer opens the vault.");
+    } catch {
+      setError("Old passphrase is wrong — nothing was changed.");
+    }
   };
 
   const setField = (k: keyof Entry) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -343,11 +407,61 @@ export function PasswordVault() {
           <Button variant="secondary" onClick={() => importRef.current?.click()} className="uppercase">
             Import backup
           </Button>
+          <Button variant="secondary" onClick={() => setPwOpen((o) => !o)} className="uppercase">
+            Change passphrase
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => void nuke()}
+            className="uppercase"
+            disabled={entries.length === 0 && !armed}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {armed ? "CONFIRM NUKE" : "Nuke vault"}
+          </Button>
           <Button variant="ghost" onClick={lock} className="ml-auto uppercase">
             <Lock className="h-4 w-4" aria-hidden="true" />
             Lock
           </Button>
         </div>
+
+        {pwOpen && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void changePassword();
+            }}
+            className="mt-4 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md"
+          >
+            <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">Change passphrase</h3>
+            <p className="mt-2 font-mono text-[9px] font-semibold uppercase tracking-widest text-ink/40">
+              Verifies the current passphrase, then re-encrypts every entry with a fresh key and salt.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Current passphrase</span>
+                <input type="password" className={inputCls} value={oldPass} onChange={(e) => setOldPass(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">New passphrase</span>
+                <input type="password" className={inputCls} value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Repeat new</span>
+                <input type="password" className={inputCls} value={newPass2} onChange={(e) => setNewPass2(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="submit" className="uppercase">
+                <KeyRound className="h-4 w-4" aria-hidden="true" />
+                Re-encrypt with new passphrase
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setPwOpen(false)} className="uppercase">
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
 
         {editing && (
           <form onSubmit={(e) => void save(e)} className="mt-4 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">

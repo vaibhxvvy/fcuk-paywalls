@@ -58,18 +58,19 @@ export function BusinessCard() {
       { label: "WEB", value: data.website },
       { label: "BASE", value: data.address },
     ].filter((l) => l.value.trim() !== "");
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    const startY = 465 - (lines.length - 1) * 38;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="width:100%;height:100%">
   <rect width="${w}" height="${h}" fill="${c.bg}"/>
   <rect x="0" y="0" width="26" height="${h}" fill="${c.accent}"/>
   <text x="78" y="86" font-family="Space Grotesk, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="4" fill="${c.ink}" opacity="0.75">${esc(data.company || "COMPANY")}</text>
-  <text x="78" y="252" font-family="Space Grotesk, Arial, sans-serif" font-size="72" font-weight="700" fill="${c.ink}">${esc(data.name || "NAME")}</text>
-  <text x="80" y="300" font-family="Space Grotesk, Arial, sans-serif" font-size="28" font-weight="500" letter-spacing="3" fill="${c.ink}" opacity="0.6">${esc(data.role || "ROLE")}</text>
-  <line x1="78" y1="330" x2="${w - 90}" y2="330" stroke="${c.ink}" stroke-width="3" opacity="0.3"/>
+  <text x="78" y="232" font-family="Space Grotesk, Arial, sans-serif" font-size="72" font-weight="700" fill="${c.ink}">${esc(data.name || "NAME")}</text>
+  <text x="80" y="282" font-family="Space Grotesk, Arial, sans-serif" font-size="28" font-weight="500" letter-spacing="3" fill="${c.ink}" opacity="0.6">${esc(data.role || "ROLE")}</text>
+  <line x1="78" y1="312" x2="${w - 90}" y2="312" stroke="${c.ink}" stroke-width="3" opacity="0.3"/>
   ${lines
     .map(
       (l, i) =>
-        `<text x="78" y="${385 + i * 42}" font-family="Space Grotesk, Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="2" fill="${c.ink}" opacity="0.45">${l.label}</text>
-         <text x="200" y="${385 + i * 42}" font-family="Space Grotesk, Arial, sans-serif" font-size="19" font-weight="500" fill="${c.ink}">${esc(l.value)}</text>`,
+        `<text x="78" y="${startY + i * 38}" font-family="Space Grotesk, Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="2" fill="${c.ink}" opacity="0.45">${l.label}</text>
+         <text x="200" y="${startY + i * 38}" font-family="Space Grotesk, Arial, sans-serif" font-size="19" font-weight="500" fill="${c.ink}">${esc(l.value)}</text>`,
     )
     .join("\n  ")}
 </svg>`;

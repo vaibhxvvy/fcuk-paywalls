@@ -181,6 +181,13 @@ export function BarcodeForge() {
         return null;
       }
       const d = v.length === 11 ? v + eanCheck("0" + v) : v;
+      if (v.length === 12) {
+        const computed = eanCheck("0" + v.slice(0, 11));
+        if (d[11] !== computed) {
+          setError(`Check digit ${d[11]} doesn't match ${computed} — the barcode won't scan.`);
+          return null;
+        }
+      }
       return { bits: eanModules("0" + d), label: d };
     }
     if (mode === "code128") {
@@ -330,7 +337,8 @@ export function BarcodeForge() {
                   <svg
                     width={width}
                     height={90}
-                    className="block"
+                    viewBox={`0 0 ${width} 90`}
+                    className="block h-auto max-w-full"
                     shapeRendering="crispEdges"
                     role="img"
                     aria-label={`${mode} barcode for ${built.label}`}

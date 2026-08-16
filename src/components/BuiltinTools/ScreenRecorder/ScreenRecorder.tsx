@@ -62,6 +62,7 @@ export function ScreenRecorder() {
         audio: tabAudio ? { echoCancellation: false } : false,
       });
       if (displayStream.getVideoTracks().length === 0) throw new Error("no-screen");
+      displayStream.getVideoTracks()[0].addEventListener("ended", () => stopRecording());
       const tracks: MediaStreamTrack[] = [...displayStream.getTracks()];
       if (mic) {
         try {
@@ -78,6 +79,7 @@ export function ScreenRecorder() {
       const rec = new MediaRecorder(streamRef.current, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
       recRef.current = rec;
       chunksRef.current = [];
+      setDone(null);
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
@@ -87,25 +89,28 @@ export function ScreenRecorder() {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
         setDone(URL.createObjectURL(blob));
       };
+      const begin = () => {
+        rec.start(250);
+        setRecording(true);
+        setElapsed(0);
+        timerRef.current = window.setInterval(() => {
+          setElapsed((e) => {
+            if (e + 1 >= MAX_SECONDS) {
+              stopRecording();
+              return e;
+            }
+            return e + 1;
+          });
+        }, 1000);
+      };
       setCountdown(3);
       const cd = setInterval(() => {
         setCountdown((c) => {
           if (c === null) return null;
-          if (c <= 1) {
+          if (c === 0) {
             clearInterval(cd);
             setCountdown(null);
-            rec.start(250);
-            setRecording(true);
-            setElapsed(0);
-            timerRef.current = window.setInterval(() => {
-              setElapsed((e) => {
-                if (e + 1 >= MAX_SECONDS) {
-                  stopRecording();
-                  return e;
-                }
-                return e + 1;
-              });
-            }, 1000);
+            begin();
             return 0;
           }
           return c - 1;

@@ -146,7 +146,12 @@ export function VideoTrimmer() {
           </button>
 
           {url && (
-            <video ref={videoRef} src={url} className="mt-4 w-full rounded-md border-2 border-ink bg-ink" controls />
+            <video
+              ref={videoRef}
+              src={url}
+              className="mt-4 max-h-72 w-full rounded-md border-2 border-ink bg-ink object-contain"
+              controls
+            />
           )}
 
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -200,7 +205,7 @@ export function VideoTrimmer() {
         <section className="flex min-w-0 flex-col rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[02] Capture</h2>
 
-          {state === "idle" && (
+          {state === "idle" && !done && (
             <>
               <Button onClick={startRecording} disabled={!url} className="mt-4 w-full uppercase">
                 <Play className="h-4 w-4" aria-hidden="true" />
