@@ -213,7 +213,8 @@ body::before {
 
 /* Resume builder print export */
 .resume-print-root,
-.invoice-print-root {
+.invoice-print-root,
+.photo-print-root {
   display: none;
 }
 
@@ -234,17 +235,21 @@ body::before {
   .resume-print-root,
   .resume-print-root *,
   .invoice-print-root,
-  .invoice-print-root * {
+  .invoice-print-root *,
+  .photo-print-root,
+  .photo-print-root * {
     visibility: visible;
   }
   .resume-print-root,
-  .invoice-print-root {
+  .invoice-print-root,
+  .photo-print-root {
     display: block;
     position: absolute;
     inset: 0;
   }
   .resume-print-page,
-  .invoice-print-page {
+  .invoice-print-page,
+  .photo-print-page {
     width: 210mm;
     height: 297mm;
     overflow: hidden;

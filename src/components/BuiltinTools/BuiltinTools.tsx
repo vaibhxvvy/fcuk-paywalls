@@ -50,6 +50,17 @@ import {
   ScrollText,
   PenLine,
   Receipt,
+  Eraser,
+  FileInput,
+  Stamp,
+  IdCard,
+  CreditCard,
+  Mail,
+  Film,
+  Music,
+  MonitorPlay,
+  Barcode,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -104,8 +115,22 @@ const VideoToGif = lazy(() => import("./VideoToGif/VideoToGif").then((m) => ({ d
 const PdfToText = lazy(() => import("./PdfToText/PdfToText").then((m) => ({ default: m.PdfToText })));
 const PdfSigner = lazy(() => import("./PdfSigner/PdfSigner").then((m) => ({ default: m.PdfSigner })));
 const InvoiceGenerator = lazy(() => import("./InvoiceGenerator/InvoiceGenerator").then((m) => ({ default: m.InvoiceGenerator })));
+const PdfRedactor = lazy(() => import("./PdfRedactor/PdfRedactor").then((m) => ({ default: m.PdfRedactor })));
+const PdfSplitter = lazy(() => import("./PdfSplitter/PdfSplitter").then((m) => ({ default: m.PdfSplitter })));
+const PdfToImages = lazy(() => import("./PdfToImages/PdfToImages").then((m) => ({ default: m.PdfToImages })));
+const PdfFormFiller = lazy(() => import("./PdfFormFiller/PdfFormFiller").then((m) => ({ default: m.PdfFormFiller })));
+const BatchWatermarker = lazy(() => import("./BatchWatermarker/BatchWatermarker").then((m) => ({ default: m.BatchWatermarker })));
+const WatermarkCropper = lazy(() => import("./WatermarkCropper/WatermarkCropper").then((m) => ({ default: m.WatermarkCropper })));
+const BarcodeForge = lazy(() => import("./BarcodeForge/BarcodeForge").then((m) => ({ default: m.BarcodeForge })));
+const PassportPhoto = lazy(() => import("./PassportPhoto/PassportPhoto").then((m) => ({ default: m.PassportPhoto })));
+const VideoTrimmer = lazy(() => import("./VideoTrimmer/VideoTrimmer").then((m) => ({ default: m.VideoTrimmer })));
+const AudioExtractor = lazy(() => import("./AudioExtractor/AudioExtractor").then((m) => ({ default: m.AudioExtractor })));
+const ScreenRecorder = lazy(() => import("./ScreenRecorder/ScreenRecorder").then((m) => ({ default: m.ScreenRecorder })));
+const BusinessCard = lazy(() => import("./BusinessCard/BusinessCard").then((m) => ({ default: m.BusinessCard })));
+const EmailSignature = lazy(() => import("./EmailSignature/EmailSignature").then((m) => ({ default: m.EmailSignature })));
+const PasswordVault = lazy(() => import("./PasswordVault/PasswordVault").then((m) => ({ default: m.PasswordVault })));
 
-type ToolCategory = "text" | "code" | "image" | "web" | "pdf";
+type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
 const CATEGORY_LABELS: Record<ToolCategory, string> = {
   text: "Text",
@@ -113,6 +138,7 @@ const CATEGORY_LABELS: Record<ToolCategory, string> = {
   image: "Image",
   web: "Web",
   pdf: "PDF",
+  media: "Media",
 };
 
 interface BuiltinToolEntry {
@@ -548,6 +574,132 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: Receipt,
     status: "live",
   },
+  {
+    id: "pdf-redactor",
+    category: "pdf",
+    name: "PDF redactor",
+    description:
+      "Drag black boxes over the sensitive bits of any PDF page and download it with them burned in — the part the redaction SaaS charges per page for.",
+    icon: Eraser,
+    status: "live",
+  },
+  {
+    id: "pdf-splitter",
+    category: "pdf",
+    name: "PDF splitter & extractor",
+    description:
+      "See every page as a thumbnail, pick the ones you want, get a new PDF — or split one PDF into many by range. No upload, no page-fee.",
+    icon: Scissors,
+    status: "live",
+  },
+  {
+    id: "pdf-images",
+    category: "pdf",
+    name: "PDF → images",
+    description:
+      "Render any PDF into PNG, JPEG or WebP at your DPI of choice — per page or all at once. The converter sites cap you at five pages and blur the rest.",
+    icon: Images,
+    status: "live",
+  },
+  {
+    id: "pdf-form-filler",
+    category: "pdf",
+    name: "PDF form filler",
+    description:
+      "Fill text fields, checkboxes, radios, dropdowns and option lists in any PDF form and download it flattened — no free-3-fills-a-month trap.",
+    icon: FileInput,
+    status: "live",
+  },
+  {
+    id: "batch-watermarker",
+    category: "image",
+    name: "Batch watermarker",
+    description:
+      "Stamp a watermark across a whole folder of images at once — tile or corner, opacity and size sliders, live preview, batch PNG download.",
+    icon: Stamp,
+    status: "live",
+  },
+  {
+    id: "watermark-cropper",
+    category: "image",
+    name: "Watermark cropper",
+    description:
+      "Zoom into the watermarked corner of an image, crop it out, download the clean result. The 'remove watermark' apps bill you per photo; a crop is free.",
+    icon: Crop,
+    status: "live",
+  },
+  {
+    id: "barcode-forge",
+    category: "code",
+    name: "Barcode forge",
+    description:
+      "Real EAN-13, UPC-A, Code 128 and Code 39 barcodes with validated checksums — SVG or PNG at any scale. The paid generators hide high-res behind paywalls.",
+    icon: Barcode,
+    status: "live",
+  },
+  {
+    id: "passport-photo",
+    category: "image",
+    name: "Passport photo",
+    description:
+      "Crop to a real passport ratio, scrub the background to white, print a 6-up A4 sheet. The passport-photo apps charge per print; the crop is the only math involved.",
+    icon: IdCard,
+    status: "live",
+  },
+  {
+    id: "video-trimmer",
+    category: "media",
+    name: "Video trimmer",
+    description:
+      "Cut a video down to just the part you need — preview, trim, capture, done. The cloud trimmers upload your file and charge for the privilege.",
+    icon: Film,
+    status: "live",
+  },
+  {
+    id: "audio-extractor",
+    category: "media",
+    name: "Audio extractor & trimmer",
+    description:
+      "Pull the audio out of any video and cut it to the exact moment — clean 48 kHz WAV, rendered offline. No queue, no caps, no watermark.",
+    icon: Music,
+    status: "live",
+  },
+  {
+    id: "screen-recorder",
+    category: "media",
+    name: "Screen recorder",
+    description:
+      "Record your screen, tab audio and mic — locally, straight to WebM. The loom-adjacent companies give you 25 videos and a watermark for a reason.",
+    icon: MonitorPlay,
+    status: "live",
+  },
+  {
+    id: "business-card",
+    category: "image",
+    name: "Business card maker",
+    description:
+      "A 90×50 mm brutalist business card, live-rendered and exported at print resolution. The card-printing sites charge per card and watermark the preview.",
+    icon: CreditCard,
+    status: "live",
+  },
+  {
+    id: "email-signature",
+    category: "web",
+    name: "Email signature generator",
+    description:
+      "Table markup email clients actually render — not a screenshot. The 'pro signature' sites charge monthly for this exact table with a tracking pixel added.",
+    icon: Mail,
+    status: "live",
+  },
+  {
+    id: "password-vault",
+    category: "code",
+    name: "Password vault + TOTP",
+    description:
+      "A local, encrypted vault for passwords and 2FA codes — AES-GCM on your machine, with live TOTP codes. The password managers sync your secrets to their cloud and bill you.",
+    icon: KeyRound,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -598,6 +750,20 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "pdf-to-text": () => <PdfToText />,
   "pdf-signer": () => <PdfSigner />,
   "invoice-generator": () => <InvoiceGenerator />,
+  "pdf-redactor": () => <PdfRedactor />,
+  "pdf-splitter": () => <PdfSplitter />,
+  "pdf-images": () => <PdfToImages />,
+  "pdf-form-filler": () => <PdfFormFiller />,
+  "batch-watermarker": () => <BatchWatermarker />,
+  "watermark-cropper": () => <WatermarkCropper />,
+  "barcode-forge": () => <BarcodeForge />,
+  "passport-photo": () => <PassportPhoto />,
+  "video-trimmer": () => <VideoTrimmer />,
+  "audio-extractor": () => <AudioExtractor />,
+  "screen-recorder": () => <ScreenRecorder />,
+  "business-card": () => <BusinessCard />,
+  "email-signature": () => <EmailSignature />,
+  "password-vault": () => <PasswordVault />,
 };
 
 interface BuiltinToolsProps {
@@ -697,7 +863,7 @@ function ToolsLanding() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            {(["all", "text", "code", "image", "web", "pdf"] as const).map((cat) => {
+            {(["all", "text", "code", "image", "web", "pdf", "media"] as const).map((cat) => {
               const label = cat === "all" ? "All" : CATEGORY_LABELS[cat];
               const active = category === cat;
               return (
