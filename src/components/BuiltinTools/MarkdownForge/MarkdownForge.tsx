@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, Eraser, FileCode, Sparkles } from "lucide-react";
+import { Copy, Eraser, FileCode, Printer, Sparkles } from "lucide-react";
 import { marked } from "marked";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -91,6 +91,16 @@ export function MarkdownForge() {
               <Copy className="h-4 w-4" aria-hidden="true" />
               {copied ? "Copied" : "Copy HTML"}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.print()}
+              disabled={!html}
+              className="uppercase"
+            >
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              Print / PDF
+            </Button>
           </div>
         </section>
 
@@ -112,6 +122,12 @@ export function MarkdownForge() {
       <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
         Rendered with marked — GitHub-flavored, in your tab. No data leaves.
       </p>
+
+      {html && (
+        <div className="md-print-sheet" aria-hidden="true">
+          <div className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />
+        </div>
+      )}
     </ToolShell>
   );
 }

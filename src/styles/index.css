@@ -214,7 +214,8 @@ body::before {
 /* Resume builder print export */
 .resume-print-root,
 .invoice-print-root,
-.photo-print-root {
+.photo-print-root,
+.md-print-sheet {
   display: none;
 }
 
@@ -237,12 +238,15 @@ body::before {
   .invoice-print-root,
   .invoice-print-root *,
   .photo-print-root,
-  .photo-print-root * {
+  .photo-print-root *,
+  .md-print-sheet,
+  .md-print-sheet * {
     visibility: visible;
   }
   .resume-print-root,
   .invoice-print-root,
-  .photo-print-root {
+  .photo-print-root,
+  .md-print-sheet {
     display: block;
     position: absolute;
     inset: 0;
@@ -254,5 +258,96 @@ body::before {
     height: 297mm;
     overflow: hidden;
     background: #fff;
+  }
+  .md-print-sheet {
+    padding: 22mm 20mm;
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 12pt;
+    line-height: 1.65;
+    color: #111;
+    background: #fff;
+  }
+  .md-print-sheet h1,
+  .md-print-sheet h2,
+  .md-print-sheet h3,
+  .md-print-sheet h4 {
+    font-weight: 700;
+  }
+  .md-print-sheet h1 {
+    font-size: 24pt;
+    margin: 0 0 12pt;
+  }
+  .md-print-sheet h2 {
+    font-size: 17pt;
+    margin: 18pt 0 8pt;
+    border-bottom: 1pt solid #111;
+    padding-bottom: 3pt;
+  }
+  .md-print-sheet h3 {
+    font-size: 13pt;
+    margin: 14pt 0 6pt;
+  }
+  .md-print-sheet p,
+  .md-print-sheet ul,
+  .md-print-sheet ol,
+  .md-print-sheet blockquote,
+  .md-print-sheet pre,
+  .md-print-sheet table {
+    margin: 0 0 10pt;
+  }
+  .md-print-sheet ul,
+  .md-print-sheet ol {
+    padding-left: 22pt;
+  }
+  .md-print-sheet li {
+    margin-bottom: 3pt;
+  }
+  .md-print-sheet code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 9.5pt;
+    background: #f1ede2;
+    border: 1pt solid #ddd;
+    border-radius: 2pt;
+    padding: 1pt 3pt;
+  }
+  .md-print-sheet pre {
+    background: #f1ede2;
+    border: 1pt solid #ddd;
+    border-radius: 3pt;
+    padding: 10pt;
+    white-space: pre-wrap;
+    overflow: hidden;
+  }
+  .md-print-sheet pre code {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .md-print-sheet blockquote {
+    border-left: 4pt solid #ffd84d;
+    padding-left: 10pt;
+    color: #333;
+  }
+  .md-print-sheet table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .md-print-sheet th,
+  .md-print-sheet td {
+    border: 1pt solid #999;
+    padding: 4pt 6pt;
+    font-size: 10pt;
+  }
+  .md-print-sheet a {
+    color: #111;
+    text-decoration: underline;
+  }
+  .md-print-sheet img {
+    max-width: 100%;
+  }
+  .md-print-sheet hr {
+    border: none;
+    border-top: 2pt solid #111;
+    margin: 14pt 0;
   }
 }

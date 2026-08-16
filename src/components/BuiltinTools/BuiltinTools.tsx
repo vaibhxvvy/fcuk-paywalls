@@ -61,6 +61,9 @@ import {
   MonitorPlay,
   Barcode,
   KeyRound,
+  LayoutGrid,
+  Map,
+  CalendarPlus,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -129,6 +132,9 @@ const ScreenRecorder = lazy(() => import("./ScreenRecorder/ScreenRecorder").then
 const BusinessCard = lazy(() => import("./BusinessCard/BusinessCard").then((m) => ({ default: m.BusinessCard })));
 const EmailSignature = lazy(() => import("./EmailSignature/EmailSignature").then((m) => ({ default: m.EmailSignature })));
 const PasswordVault = lazy(() => import("./PasswordVault/PasswordVault").then((m) => ({ default: m.PasswordVault })));
+const CollageForge = lazy(() => import("./CollageForge/CollageForge").then((m) => ({ default: m.CollageForge })));
+const SitemapForge = lazy(() => import("./SitemapForge/SitemapForge").then((m) => ({ default: m.SitemapForge })));
+const EventForge = lazy(() => import("./EventForge/EventForge").then((m) => ({ default: m.EventForge })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -237,7 +243,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     category: "text",
     name: "Markdown forge",
     description:
-      "Drop Markdown, walk out with HTML. Rendered live with GFM — headers, code blocks, tables, links.",
+      "Drop Markdown, walk out with HTML — or print it straight to PDF. Rendered live with GFM — headers, code blocks, tables, links.",
     icon: FileCode,
     status: "live",
   },
@@ -700,6 +706,33 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: KeyRound,
     status: "live",
   },
+  {
+    id: "collage-forge",
+    category: "image",
+    name: "Collage forge",
+    description:
+      "Stack photos into a clean 2×2, 3×2 or 3×3 grid — gap, background and fit control, exported at 1600 px. The collage apps meter you per grid and watermark the free tier.",
+    icon: LayoutGrid,
+    status: "live",
+  },
+  {
+    id: "sitemap-forge",
+    category: "web",
+    name: "Sitemap.xml generator",
+    description:
+      "Type your site's paths, get a standards-clean sitemap.xml — lastmod, frequency, priority. The sitemap sites bill for the premium tier and crawl your free output first.",
+    icon: Map,
+    status: "live",
+  },
+  {
+    id: "event-forge",
+    category: "web",
+    name: ".ics event generator",
+    description:
+      "Fill in the when and where, get a real .ics file with reminders — imports into Google, Apple and Outlook calendars. The event sites bill per event and keep your guest list.",
+    icon: CalendarPlus,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -764,6 +797,9 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "business-card": () => <BusinessCard />,
   "email-signature": () => <EmailSignature />,
   "password-vault": () => <PasswordVault />,
+  "collage-forge": () => <CollageForge />,
+  "sitemap-forge": () => <SitemapForge />,
+  "event-forge": () => <EventForge />,
 };
 
 interface BuiltinToolsProps {
