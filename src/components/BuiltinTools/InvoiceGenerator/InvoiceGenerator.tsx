@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, FileDown, Maximize2, Plus, Receipt, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { Eye, FileDown, Maximize2, Plus, Printer, Receipt, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import qrcode from "qrcode-generator";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
 
@@ -10,16 +11,26 @@ interface LineItem {
   rate: string;
 }
 
-type TemplateId = "brutal" | "minimal" | "classic";
+type TemplateId = "brutal" | "minimal" | "classic" | "zebra" | "pop";
 
 const TEMPLATES: { id: TemplateId; name: string; desc: string }[] = [
   { id: "brutal", name: "Brutal", desc: "Black band, thick rules, mono numbers." },
   { id: "minimal", name: "Minimal", desc: "Light rules, whitespace, small caps." },
   { id: "classic", name: "Classic", desc: "Serif type, double rules, centered header." },
+  { id: "zebra", name: "Zebra", desc: "Black band, striped rows that alternate." },
+  { id: "pop", name: "Pop", desc: "Yellow band, red total box, loud." },
+];
+
+const CODES: { id: "none" | "barcode" | "qr"; name: string }[] = [
+  { id: "none", name: "None" },
+  { id: "barcode", name: "Barcode" },
+  { id: "qr", name: "QR" },
 ];
 
 const A4_W = 595;
 const A4_H = 842;
+
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2";
 
 let nextId = 1;
 
@@ -50,6 +61,64 @@ const sanitize = (s: string) =>
     .map((c) => CHAR_MAP[c] ?? (c.charCodeAt(0) >= 32 && c.charCodeAt(0) <= 255 ? c : "?"))
     .join("");
 
+const CODE39: Record<string, number[]> = {
+  "0": [0, 0, 0, 1, 1, 0, 1, 0, 0],
+  "1": [1, 0, 0, 1, 0, 0, 0, 0, 1],
+  "2": [0, 0, 1, 1, 0, 0, 0, 0, 1],
+  "3": [1, 0, 1, 1, 0, 0, 0, 0, 0],
+  "4": [0, 0, 0, 1, 1, 0, 0, 0, 1],
+  "5": [1, 0, 0, 1, 1, 0, 0, 0, 0],
+  "6": [0, 0, 1, 1, 1, 0, 0, 0, 0],
+  "7": [0, 0, 0, 1, 0, 0, 1, 0, 1],
+  "8": [1, 0, 0, 1, 0, 0, 1, 0, 0],
+  "9": [0, 0, 1, 1, 0, 0, 1, 0, 0],
+  A: [1, 0, 0, 0, 0, 1, 0, 0, 1],
+  B: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+  C: [1, 0, 1, 0, 0, 1, 0, 0, 0],
+  D: [0, 0, 0, 0, 1, 1, 0, 0, 1],
+  E: [1, 0, 0, 0, 1, 1, 0, 0, 0],
+  F: [0, 0, 1, 0, 1, 1, 0, 0, 0],
+  G: [0, 0, 0, 0, 0, 1, 1, 0, 1],
+  H: [1, 0, 0, 0, 0, 1, 1, 0, 0],
+  I: [0, 0, 1, 0, 0, 1, 1, 0, 0],
+  J: [0, 0, 0, 0, 1, 1, 1, 0, 0],
+  K: [1, 0, 0, 0, 0, 0, 0, 1, 1],
+  L: [0, 0, 1, 0, 0, 0, 0, 1, 1],
+  M: [1, 0, 1, 0, 0, 0, 0, 1, 0],
+  N: [0, 0, 0, 0, 1, 0, 0, 1, 1],
+  O: [1, 0, 0, 0, 1, 0, 0, 1, 0],
+  P: [0, 0, 1, 0, 1, 0, 0, 1, 0],
+  Q: [0, 0, 0, 0, 0, 0, 1, 1, 1],
+  R: [1, 0, 0, 0, 0, 0, 1, 1, 0],
+  S: [0, 0, 1, 0, 0, 0, 1, 1, 0],
+  T: [0, 0, 0, 0, 1, 0, 1, 1, 0],
+  U: [1, 1, 0, 0, 0, 0, 0, 0, 1],
+  V: [0, 1, 1, 0, 0, 0, 0, 0, 1],
+  W: [1, 1, 1, 0, 0, 0, 0, 0, 0],
+  X: [0, 1, 0, 0, 1, 0, 0, 0, 1],
+  Y: [1, 1, 0, 0, 1, 0, 0, 0, 0],
+  Z: [0, 1, 1, 0, 1, 0, 0, 0, 0],
+  "-": [0, 1, 0, 0, 0, 0, 1, 0, 1],
+  ".": [1, 1, 0, 0, 0, 0, 1, 0, 0],
+  " ": [0, 1, 1, 0, 0, 0, 1, 0, 0],
+  "*": [0, 1, 0, 1, 0, 1, 0, 0, 0],
+  $: [0, 1, 0, 1, 0, 1, 0, 1, 0],
+  "/": [0, 1, 0, 1, 0, 0, 1, 0, 1],
+  "+": [0, 1, 0, 0, 1, 0, 1, 0, 1],
+  "%": [0, 0, 1, 0, 1, 0, 1, 0, 1],
+};
+
+const code39Bits = (input: string): boolean[] => {
+  const s = "*" + input.toUpperCase().replace(/[^A-Z0-9 .\-$/+%]/g, " ") + "*";
+  const bits: boolean[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const p = CODE39[s[i]] ?? CODE39[" "];
+    if (i > 0) bits.push(false);
+    for (const b of p) bits.push(b === 1);
+  }
+  return bits;
+};
+
 export function InvoiceGenerator() {
   const [fromName, setFromName] = useState("");
   const [fromEmail, setFromEmail] = useState("");
@@ -57,14 +126,16 @@ export function InvoiceGenerator() {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientAddress, setClientAddress] = useState("");
-  const [number, setNumber] = useState("INV-001");
+  const [number, setNumber] = useState("FP-001");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
+  const [terms, setTerms] = useState("");
   const [currency, setCurrency] = useState("$");
   const [taxPct, setTaxPct] = useState("0");
   const [discountPct, setDiscountPct] = useState("0");
   const [notes, setNotes] = useState("");
   const [template, setTemplate] = useState<TemplateId>("brutal");
+  const [code, setCode] = useState<"none" | "barcode" | "qr">("none");
   const [items, setItems] = useState<LineItem[]>([
     { id: nextId++, desc: "", qty: "1", rate: "" },
   ]);
@@ -124,6 +195,9 @@ export function InvoiceGenerator() {
     const gray = rgb(0.42, 0.42, 0.42);
     const midGray = rgb(0.58, 0.58, 0.58);
     const paper = rgb(0.96, 0.94, 0.91);
+    const zebraFill = rgb(0.96, 0.94, 0.91);
+    const yellow = rgb(1, 0.847, 0.302);
+    const red = rgb(1, 0.353, 0.373);
 
     const helv = await doc.embedFont(StandardFonts.Helvetica);
     const helvB = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -143,7 +217,7 @@ export function InvoiceGenerator() {
     const disc = (sub * (parseFloat(discountPct) || 0)) / 100;
     const taxAmt = ((sub - disc) * (parseFloat(taxPct) || 0)) / 100;
     const tot = sub - disc + taxAmt;
-    const num = sanitize(number.trim() || "INV-001");
+    const num = (sanitize(number.trim()) || "FP-001").toUpperCase();
     const sFrom = sanitize(fromName).trim() || "Your company";
     const sFromEmail = sanitize(fromEmail).trim();
     const sFromAddr = sanitize(fromAddress).split("\n").slice(0, 3);
@@ -151,6 +225,8 @@ export function InvoiceGenerator() {
     const sClientEmail = sanitize(clientEmail).trim();
     const sClientAddr = sanitize(clientAddress).split("\n").slice(0, 3);
     const sNotes = sanitize(notes).trim();
+    const sTerms = sanitize(terms).trim();
+    const codeVal = num || "FP-001";
 
     const right = (text: string, size: number, f: typeof mono, x: number, y: number, color = ink) =>
       page.drawText(text, { x: x - f.widthOfTextAtSize(text, size), y, size, font: f, color });
@@ -168,6 +244,140 @@ export function InvoiceGenerator() {
       let t = text;
       while (s > 6 && f.widthOfTextAtSize(t, s) > maxW) s -= 0.5;
       page.drawText(t, { x: rightX - f.widthOfTextAtSize(t, s), y, size: s, font: f, color });
+    };
+
+    const drawBarcode = (rightX: number, y: number) => {
+      const bits = code39Bits(codeVal);
+      const narrow = 1.4;
+      const wide = 2.8;
+      let total = 0;
+      bits.forEach((b) => (total += b ? wide : narrow));
+      let x = rightX - total;
+      bits.forEach((b) => {
+        if (b) page.drawRectangle({ x, y, width: wide, height: 34, color: ink });
+        x += b ? wide : narrow;
+      });
+      const label = codeVal;
+      page.drawText(label, { x: rightX - mono.widthOfTextAtSize(label, 7) / 2, y: y - 12, size: 7, font: mono, color: gray });
+    };
+
+    const drawQr = (rightX: number, y: number) => {
+      const q = qrcode(0, "M");
+      q.addData(codeVal);
+      q.make();
+      const n = q.getModuleCount();
+      const ms = 2.6;
+      const total = n * ms;
+      let x = rightX - total;
+      for (let r = 0; r < n; r++)
+        for (let c = 0; c < n; c++)
+          if (q.isDark(r, c))
+            page.drawRectangle({ x: x + c * ms, y: y + (n - 1 - r) * ms, width: ms, height: ms, color: ink });
+    };
+
+    const drawCode = () => {
+      if (code === "barcode") drawBarcode(M + W, 64);
+      else if (code === "qr") drawQr(M + W, 58);
+    };
+
+    const drawTotals = (tx: number, ty: number, style: "band" | "plain" | "boxed", colors: { label: typeof gray; box: typeof ink; boxText: typeof paper; line: typeof gray }) => {
+      page.drawText("SUBTOTAL", { x: tx, y: ty, size: 9, font: helvB, color: colors.label });
+      right(pm(sub), 9, mono, M + W, ty);
+      if (disc > 0) {
+        ty -= 18;
+        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: tx, y: ty, size: 9, font: helvB, color: colors.label });
+        right(`-${pm(disc)}`, 9, mono, M + W, ty);
+      }
+      if (taxAmt > 0) {
+        ty -= 18;
+        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: tx, y: ty, size: 9, font: helvB, color: colors.label });
+        right(pm(taxAmt), 9, mono, M + W, ty);
+      }
+      if (style === "band") {
+        ty -= 30;
+        page.drawRectangle({ x: tx, y: ty - 10, width: W * 0.42, height: 30, color: colors.box });
+        page.drawText("TOTAL", { x: tx + 10, y: ty, size: 10, font: helvB, color: colors.boxText });
+        right(pm(tot), 11, monoB, M + W, ty, colors.boxText);
+      } else if (style === "boxed") {
+        ty -= 34;
+        page.drawRectangle({
+          x: tx - 8,
+          y: ty - 12,
+          width: W * 0.42 + 16,
+          height: 34,
+          borderColor: ink,
+          borderWidth: 1,
+        });
+        page.drawText("TOTAL", { x: tx, y: ty, size: 12, font: timesB, color: ink });
+        right(pm(tot), 12, timesB, M + W, ty);
+      } else {
+        ty -= 30;
+        page.drawLine({ start: { x: tx, y: ty + 12 }, end: { x: M + W, y: ty + 12 }, thickness: 0.5, color: colors.line });
+        page.drawText("TOTAL", { x: tx, y: ty, size: 12, font: helvB, color: ink });
+        right(pm(tot), 11, monoB, M + W, ty);
+      }
+      return ty;
+    };
+
+    const drawNotes = (ty: number, f: typeof helv) => {
+      if (sNotes) {
+        page.drawText("NOTES", { x: M, y: ty - 58, size: 8, font: helvB, color: gray });
+        page.drawText(sNotes, { x: M, y: ty - 70, size: 9, font: f, color: ink, maxWidth: W * 0.9 });
+      }
+    };
+
+    const drawFooter = (f: typeof helv, color = gray) => {
+      page.drawText("FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls", {
+        x: M,
+        y: 40,
+        size: 7,
+        font: f,
+        color,
+      });
+    };
+
+    const drawTable = (
+      headY: number,
+      style: "thick" | "hairline" | "double" | "band",
+      rowFill: ((i: number, y: number) => void) | null,
+    ) => {
+      if (style === "band") {
+        page.drawRectangle({ x: M, y: headY - 14, width: W, height: 22, color: ink });
+      }
+      page.drawText("DESCRIPTION", { x: M + (style === "band" ? 6 : 0), y: headY, size: 8, font: helvB, color: style === "band" ? paper : gray });
+      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: style === "band" ? paper : gray });
+      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: style === "band" ? paper : gray });
+      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: style === "band" ? paper : gray });
+      if (style === "thick") page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 2, color: ink });
+      else if (style === "hairline") page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 0.5, color: gray });
+      else if (style === "double") {
+        page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 0.7, color: ink });
+        page.drawLine({ start: { x: M, y: headY - 11 }, end: { x: M + W, y: headY - 11 }, thickness: 0.7, color: ink });
+      }
+
+      let rowY = headY - 26;
+      visible.forEach((it, i) => {
+        if (rowFill) rowFill(i, rowY);
+        page.drawText(sanitize(it.desc), { x: M + (style === "band" ? 6 : 0), y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
+        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
+        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
+        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
+        if (style !== "band")
+          page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.5, color: midGray });
+        rowY -= 22;
+      });
+      if (style === "thick" || style === "band")
+        page.drawLine({ start: { x: M, y: rowY - 4 }, end: { x: M + W, y: rowY - 4 }, thickness: 2, color: ink });
+      else if (style === "hairline") page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 1, color: ink });
+      else if (style === "double")
+        page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 0.7, color: ink });
+      return rowY;
+    };
+
+    const drawBand = (color: typeof ink, textColor: typeof paper) => {
+      page.drawRectangle({ x: 0, y: 792 - 76, width: 612, height: 76, color });
+      page.drawText("INVOICE", { x: M, y: 792 - 50, size: 26, font: helvB, color: textColor });
+      page.drawText(num, { x: 612 - M - monoB.widthOfTextAtSize(num, 13), y: 792 - 46, size: 13, font: monoB, color: textColor });
     };
 
     if (template === "minimal") {
@@ -189,82 +399,21 @@ export function InvoiceGenerator() {
       const dueY = cTop - 38 - sClientAddr.length * 12;
       page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
       if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: gray });
 
-      const headY = Math.min(616, dueY - 16);
-      page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: midGray });
-      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: midGray });
-      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: midGray });
-      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: midGray });
-      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 0.5, color: gray });
-
-      let rowY = headY - 26;
-      for (const it of visible) {
-        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
-        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
-        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
-        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
-        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.5, color: midGray });
-        rowY -= 22;
-      }
-      page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 1, color: ink });
-
-      const tx = M + W * 0.58;
-      let ty = rowY - 36;
-      page.drawText("SUBTOTAL", { x: tx, y: ty, size: 8, font: helvB, color: midGray });
-      right(pm(sub), 9, mono, M + W, ty);
-      if (disc > 0) {
-        ty -= 18;
-        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: tx, y: ty, size: 8, font: helvB, color: midGray });
-        right(`-${pm(disc)}`, 9, mono, M + W, ty);
-      }
-      if (taxAmt > 0) {
-        ty -= 18;
-        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: tx, y: ty, size: 8, font: helvB, color: midGray });
-        right(pm(taxAmt), 9, mono, M + W, ty);
-      }
-      ty -= 30;
-      page.drawLine({ start: { x: tx, y: ty + 12 }, end: { x: M + W, y: ty + 12 }, thickness: 0.5, color: ink });
-      page.drawText("TOTAL", { x: tx, y: ty, size: 12, font: helvB, color: ink });
-      right(pm(tot), 11, monoB, M + W, ty);
-
-      if (sNotes) {
-        page.drawText("NOTES", { x: M, y: ty - 58, size: 8, font: helvB, color: midGray });
-        page.drawText(sNotes, { x: M, y: ty - 70, size: 9, font: helv, color: ink, maxWidth: W * 0.9 });
-      }
-      page.drawText("generated locally by fcuk paywalls — no invoice service counted this one", {
-        x: M,
-        y: 40,
-        size: 7,
-        font: helv,
-        color: midGray,
-      });
+      const rowY = drawTable(Math.min(616, dueY - (sTerms ? 36 : 16)), "hairline", null);
+      const ty = drawTotals(M + W * 0.58, rowY - 36, "plain", { label: midGray, box: ink, boxText: paper, line: midGray });
+      drawNotes(ty, helv);
+      drawFooter(helv, midGray);
     } else if (template === "classic") {
       page.drawLine({ start: { x: M, y: 752 }, end: { x: M + W, y: 752 }, thickness: 0.7, color: ink });
       page.drawLine({ start: { x: M, y: 746 }, end: { x: M + W, y: 746 }, thickness: 0.7, color: ink });
 
       const title = "INVOICE";
-      page.drawText(title, {
-        x: 306 - timesB.widthOfTextAtSize(title, 18) / 2,
-        y: 716,
-        size: 18,
-        font: timesB,
-        color: ink,
-      });
-      page.drawText(sFrom.toUpperCase(), {
-        x: 306 - timesI.widthOfTextAtSize(sFrom.toUpperCase(), 10) / 2,
-        y: 696,
-        size: 10,
-        font: timesI,
-        color: ink,
-      });
+      page.drawText(title, { x: 306 - timesB.widthOfTextAtSize(title, 18) / 2, y: 716, size: 18, font: timesB, color: ink });
+      page.drawText(sFrom.toUpperCase(), { x: 306 - timesI.widthOfTextAtSize(sFrom.toUpperCase(), 10) / 2, y: 696, size: 10, font: timesI, color: ink });
       if (sFromEmail)
-        page.drawText(sFromEmail, {
-          x: 306 - times.widthOfTextAtSize(sFromEmail, 8) / 2,
-          y: 684,
-          size: 8,
-          font: times,
-          color: gray,
-        });
+        page.drawText(sFromEmail, { x: 306 - times.widthOfTextAtSize(sFromEmail, 8) / 2, y: 684, size: 8, font: times, color: gray });
 
       const cx = M + W * 0.55;
       page.drawText("FROM", { x: M, y: 652, size: 9, font: timesB, color: ink });
@@ -280,70 +429,15 @@ export function InvoiceGenerator() {
       const metaY = 598 - Math.max(sFromAddr.length, sClientAddr.length) * 11;
       page.drawText(`DATE  ${date}`, { x: M, y: metaY, size: 9, font: times, color: ink });
       page.drawText(`NUMBER  ${num}`, { x: cx, y: metaY, size: 9, font: times, color: ink });
-      if (dueDate.trim())
-        page.drawText(`DUE  ${sanitize(dueDate)}`, { x: M, y: metaY - 12, size: 9, font: times, color: ink });
+      if (dueDate.trim()) page.drawText(`DUE  ${sanitize(dueDate)}`, { x: M, y: metaY - 12, size: 9, font: times, color: ink });
+      if (sTerms) page.drawText(`TERMS  ${sTerms}`, { x: M, y: metaY - 24, size: 9, font: times, color: ink });
 
-      const headY = Math.min(564, metaY - 22);
-      page.drawText("DESCRIPTION", { x: M, y: headY, size: 9, font: timesB, color: ink });
-      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 9, font: timesB, color: ink });
-      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 9, font: timesB, color: ink });
-      page.drawText("AMOUNT", { x: M + W, y: headY, size: 9, font: timesB, color: ink });
-      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 0.7, color: ink });
-      page.drawLine({ start: { x: M, y: headY - 11 }, end: { x: M + W, y: headY - 11 }, thickness: 0.7, color: ink });
-
-      let rowY = headY - 32;
-      for (const it of visible) {
-        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: times, color: ink, maxWidth: W * 0.56 });
-        fitRight(it.qty, 10, times, M + W * 0.72, rowY, W * 0.12);
-        fitRight(pm(parseFloat(it.rate) || 0), 10, times, M + W * 0.9, rowY, W * 0.18);
-        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, timesB, M + W, rowY, W * 0.1);
-        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.4, color: midGray });
-        rowY -= 22;
-      }
-      page.drawLine({ start: { x: M, y: rowY - 6 }, end: { x: M + W, y: rowY - 6 }, thickness: 0.7, color: ink });
-
-      const tx = M + W * 0.58;
-      let ty = rowY - 38;
-      page.drawText("SUBTOTAL", { x: tx, y: ty, size: 9, font: timesB, color: ink });
-      right(pm(sub), 9, times, M + W, ty);
-      if (disc > 0) {
-        ty -= 18;
-        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: tx, y: ty, size: 9, font: timesB, color: ink });
-        right(`-${pm(disc)}`, 9, times, M + W, ty);
-      }
-      if (taxAmt > 0) {
-        ty -= 18;
-        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: tx, y: ty, size: 9, font: timesB, color: ink });
-        right(pm(taxAmt), 9, times, M + W, ty);
-      }
-      ty -= 34;
-      page.drawRectangle({
-        x: tx - 8,
-        y: ty - 12,
-        width: W * 0.42 + 16,
-        height: 34,
-        borderColor: ink,
-        borderWidth: 1,
-      });
-      page.drawText("TOTAL", { x: tx, y: ty, size: 12, font: timesB, color: ink });
-      right(pm(tot), 12, timesB, M + W, ty);
-
-      if (sNotes) {
-        page.drawText("NOTES", { x: M, y: ty - 60, size: 8, font: timesB, color: ink });
-        page.drawText(sNotes, { x: M, y: ty - 72, size: 9, font: timesI, color: ink, maxWidth: W * 0.9 });
-      }
-      page.drawText("generated locally by fcuk paywalls — no invoice service counted this one", {
-        x: M,
-        y: 40,
-        size: 7,
-        font: timesI,
-        color: midGray,
-      });
-    } else {
-      page.drawRectangle({ x: 0, y: 792 - 76, width: 612, height: 76, color: ink });
-      page.drawText("INVOICE", { x: M, y: 792 - 50, size: 26, font: helvB, color: paper });
-      page.drawText(num, { x: 612 - M - monoB.widthOfTextAtSize(num, 13), y: 792 - 46, size: 13, font: monoB, color: paper });
-
+      const rowY = drawTable(Math.min(564, metaY - (sTerms ? 36 : 22)), "double", null);
+      const ty = drawTotals(M + W * 0.58, rowY - 38, "boxed", { label: ink, box: ink, boxText: paper, line: gray });
+      drawNotes(ty, timesI);
+      drawFooter(timesI, midGray);
+    } else if (template === "zebra") {
+      drawBand(ink, paper);
       let y = 792 - 76 - 30;
       page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: ink });
       if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: gray });
@@ -358,63 +452,73 @@ export function InvoiceGenerator() {
       const dueY = cTop - 38 - sClientAddr.length * 12;
       page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
       if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: gray });
 
-      const headY = Math.min(y - 74, dueY - 20);
-      page.drawText("DESCRIPTION", { x: M, y: headY, size: 8, font: helvB, color: gray });
-      page.drawText("QTY", { x: M + W * 0.6, y: headY, size: 8, font: helvB, color: gray });
-      page.drawText("RATE", { x: M + W * 0.78, y: headY, size: 8, font: helvB, color: gray });
-      page.drawText("AMOUNT", { x: M + W, y: headY, size: 8, font: helvB, color: gray });
-      page.drawLine({ start: { x: M, y: headY - 6 }, end: { x: M + W, y: headY - 6 }, thickness: 2, color: ink });
-
-      let rowY = headY - 26;
-      for (const it of visible) {
-        page.drawText(sanitize(it.desc), { x: M, y: rowY, size: 10, font: helv, color: ink, maxWidth: W * 0.56 });
-        fitRight(it.qty, 10, mono, M + W * 0.72, rowY, W * 0.12);
-        fitRight(pm(parseFloat(it.rate) || 0), 10, mono, M + W * 0.9, rowY, W * 0.18);
-        fitRight(pm((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0)), 10, monoB, M + W, rowY, W * 0.1);
-        page.drawLine({ start: { x: M, y: rowY - 9 }, end: { x: M + W, y: rowY - 9 }, thickness: 0.5, color: gray });
-        rowY -= 22;
-      }
-      page.drawLine({ start: { x: M, y: rowY - 4 }, end: { x: M + W, y: rowY - 4 }, thickness: 2, color: ink });
-
-      const tx = M + W * 0.58;
-      let ty = rowY - 36;
-      page.drawText("SUBTOTAL", { x: tx, y: ty, size: 9, font: helvB, color: gray });
-      right(pm(sub), 9, mono, M + W, ty);
-      if (disc > 0) {
-        ty -= 18;
-        page.drawText(`DISCOUNT (${sanitize(discountPct)}%)`, { x: tx, y: ty, size: 9, font: helvB, color: gray });
-        right(`-${pm(disc)}`, 9, mono, M + W, ty);
-      }
-      if (taxAmt > 0) {
-        ty -= 18;
-        page.drawText(`TAX (${sanitize(taxPct)}%)`, { x: tx, y: ty, size: 9, font: helvB, color: gray });
-        right(pm(taxAmt), 9, mono, M + W, ty);
-      }
-      ty -= 30;
-      page.drawRectangle({ x: tx, y: ty - 10, width: W * 0.42, height: 30, color: ink });
-      page.drawText("TOTAL", { x: tx + 10, y: ty, size: 10, font: helvB, color: paper });
-      right(pm(tot), 11, monoB, M + W, ty);
-
-      if (sNotes) {
-        page.drawText("NOTES", { x: M, y: ty - 58, size: 8, font: helvB, color: gray });
-        page.drawText(sNotes, { x: M, y: ty - 70, size: 9, font: helv, color: ink, maxWidth: W * 0.9 });
-      }
-      page.drawText("generated locally by fcuk paywalls — no invoice service counted this one", {
-        x: M,
-        y: 40,
-        size: 7,
-        font: helv,
-        color: gray,
+      const rowY = drawTable(Math.min(y - 74, dueY - (sTerms ? 36 : 20)), "band", (i, rowY) => {
+        if (i % 2 === 1) page.drawRectangle({ x: M, y: rowY - 9, width: W, height: 20, color: zebraFill });
       });
+      const ty = drawTotals(M + W * 0.58, rowY - 34, "band", { label: gray, box: ink, boxText: paper, line: gray });
+      drawNotes(ty, helv);
+      drawFooter(helv, gray);
+    } else if (template === "pop") {
+      drawBand(yellow, ink);
+      let y = 792 - 76 - 30;
+      page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: ink });
+      if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: y - 27 - i * 12, size: 8, font: helv, color: gray }));
+
+      const cx = M + W * 0.55;
+      const cTop = y - sFromAddr.length * 12;
+      page.drawText("TO", { x: cx, y: cTop, size: 9, font: helvB, color: gray });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: ink });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: gray });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: gray }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: gray });
+
+      page.drawLine({ start: { x: M, y: dueY - 34 }, end: { x: M + W, y: dueY - 34 }, thickness: 3, color: ink });
+      const rowY = drawTable(Math.min(y - 74, dueY - (sTerms ? 46 : 30)), "thick", null);
+      const ty = drawTotals(M + W * 0.58, rowY - 36, "band", { label: gray, box: red, boxText: ink, line: gray });
+      drawNotes(ty, helv);
+      drawFooter(helv, gray);
+    } else {
+      drawBand(ink, paper);
+      let y = 792 - 76 - 30;
+      page.drawText(sFrom.toUpperCase(), { x: M, y, size: 11, font: helvB, color: ink });
+      if (sFromEmail) page.drawText(sFromEmail, { x: M, y: y - 15, size: 9, font: helv, color: gray });
+      sFromAddr.forEach((l, i) => page.drawText(l, { x: M, y: y - 27 - i * 12, size: 8, font: helv, color: gray }));
+
+      const cx = M + W * 0.55;
+      const cTop = y - sFromAddr.length * 12;
+      page.drawText("TO", { x: cx, y: cTop, size: 9, font: helvB, color: gray });
+      page.drawText(sClient.toUpperCase(), { x: cx, y: cTop - 14, size: 10, font: helvB, color: ink });
+      if (sClientEmail) page.drawText(sClientEmail, { x: cx, y: cTop - 26, size: 9, font: helv, color: gray });
+      sClientAddr.forEach((l, i) => page.drawText(l, { x: cx, y: cTop - 38 - i * 12, size: 8, font: helv, color: gray }));
+      const dueY = cTop - 38 - sClientAddr.length * 12;
+      page.drawText(`DATE  ${date}`, { x: cx, y: dueY, size: 9, font: mono, color: gray });
+      if (dueDate.trim()) page.drawText(`DUE   ${sanitize(dueDate)}`, { x: cx, y: dueY - 13, size: 9, font: mono, color: gray });
+      if (sTerms) page.drawText(`TERMS ${sTerms}`, { x: cx, y: dueY - 26, size: 9, font: mono, color: gray });
+
+      const rowY = drawTable(Math.min(y - 74, dueY - (sTerms ? 36 : 20)), "thick", null);
+      const ty = drawTotals(M + W * 0.58, rowY - 36, "band", { label: gray, box: ink, boxText: paper, line: gray });
+      drawNotes(ty, helv);
+      drawFooter(helv, gray);
     }
+
+    drawCode();
 
     const bytes = await doc.save();
     return new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" });
   };
 
   const onExport = async () => {
-    if (!hasContent) return;
+    if (!hasContent) {
+      setError("Add at least one line item first.");
+      setStatus("error");
+      return;
+    }
     setStatus("working");
     setError(null);
     try {
@@ -422,7 +526,7 @@ export function InvoiceGenerator() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `invoice-${(number.trim() || "INV-001").toLowerCase()}.pdf`;
+      a.download = `invoice-${(number.trim() || "FP-001").toLowerCase()}.pdf`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
       setStatus("done");
@@ -432,7 +536,30 @@ export function InvoiceGenerator() {
     }
   };
 
-  const cols = "grid grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] items-center gap-2";
+  const previewProps = {
+    template,
+    fromName,
+    fromEmail,
+    fromAddress,
+    clientName,
+    clientEmail,
+    clientAddress,
+    number,
+    date,
+    dueDate,
+    terms,
+    currency,
+    taxPct,
+    discountPct,
+    notes,
+    items,
+    subtotal,
+    discount,
+    tax,
+    total,
+    money,
+    code,
+  };
 
   return (
     <ToolShell
@@ -494,7 +621,7 @@ export function InvoiceGenerator() {
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <label className="block">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Invoice no.</span>
-                <input className={inputCls} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="INV-001" />
+                <input className={inputCls} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="FP-001" />
               </label>
               <label className="block">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Date</span>
@@ -512,7 +639,7 @@ export function InvoiceGenerator() {
               [02] Line items
               <Plus className="h-4 w-4" aria-hidden="true" />
             </h2>
-            <div className={`${cols} mt-4 border-b-2 border-ink/20 pb-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50`}>
+            <div className={`${ROW_GRID} mt-4 border-b-2 border-ink/20 pb-1 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/50`}>
               <span>Description</span>
               <span className="text-right">Qty</span>
               <span className="text-right">Rate</span>
@@ -520,7 +647,7 @@ export function InvoiceGenerator() {
             </div>
             <div className="mt-2 space-y-2 overflow-x-auto">
               {items.map((it, i) => (
-                <div key={it.id} className={cols}>
+                <div key={it.id} className={ROW_GRID}>
                   <input
                     className="min-w-0 rounded-md border-2 border-ink bg-surface-muted px-2.5 py-2 font-mono text-xs text-ink outline-none placeholder:text-ink/30 focus:border-yellow"
                     value={it.desc}
@@ -604,16 +731,18 @@ export function InvoiceGenerator() {
                 <button
                   type="button"
                   onClick={() => stepZoom(-0.1)}
+                  disabled={scale <= 0.25}
                   title="Zoom out"
-                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30"
+                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => stepZoom(0.1)}
+                  disabled={scale >= 1.5}
                   title="Zoom in"
-                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30"
+                  className="rounded-md border-2 border-ink p-1 text-ink transition-[background-color] duration-200 ease-brutal hover:bg-yellow/30 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -634,28 +763,7 @@ export function InvoiceGenerator() {
                   }}
                 >
                   <div className="origin-top-left" style={{ transform: `scale(${scale})`, width: A4_W, height: A4_H }}>
-                    <PreviewPage
-                      template={template}
-                      fromName={fromName}
-                      fromEmail={fromEmail}
-                      fromAddress={fromAddress}
-                      clientName={clientName}
-                      clientEmail={clientEmail}
-                      clientAddress={clientAddress}
-                      number={number}
-                      date={date}
-                      dueDate={dueDate}
-                      currency={currency}
-                      taxPct={taxPct}
-                      discountPct={discountPct}
-                      notes={notes}
-                      items={items}
-                      subtotal={subtotal}
-                      discount={discount}
-                      tax={tax}
-                      total={total}
-                      money={money}
-                    />
+                    <PreviewPage {...previewProps} />
                   </div>
                 </div>
               </div>
@@ -697,6 +805,32 @@ export function InvoiceGenerator() {
               </div>
             </div>
 
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Terms</span>
+                <input className={inputCls} value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="NET 30" />
+              </label>
+              <div>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Code on invoice</span>
+                <div className="mt-1 flex gap-1.5">
+                  {CODES.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCode(c.id)}
+                      className={
+                        c.id === code
+                          ? "rounded-md border-2 border-ink bg-ink px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-paper"
+                          : "rounded-md border-2 border-ink bg-surface-muted px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition-[transform,background-color] duration-200 ease-brutal hover:-translate-y-0.5 hover:bg-yellow/30 active:translate-y-0"
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <label className="mt-4 block">
               <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">Notes</span>
               <textarea
@@ -707,10 +841,21 @@ export function InvoiceGenerator() {
               />
             </label>
 
-            <Button onClick={onExport} disabled={!hasContent || status === "working"} className="mt-4 w-full uppercase">
-              <FileDown className="h-4 w-4" aria-hidden="true" />
-              {status === "working" ? "Writing PDF…" : "Generate invoice PDF"}
-            </Button>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button variant="secondary" onClick={() => window.print()} className="uppercase">
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                Print
+              </Button>
+              <Button onClick={onExport} disabled={status === "working"} className="uppercase">
+                <FileDown className="h-4 w-4" aria-hidden="true" />
+                {status === "working" ? "Writing…" : "Download PDF"}
+              </Button>
+            </div>
+            {!hasContent && (
+              <p className="mt-2 font-mono text-[9px] font-bold uppercase tracking-widest text-ink/40">
+                Fill a line item to enable the export.
+              </p>
+            )}
             {status === "done" && (
               <p className="mt-3 rounded-md border-2 border-ink bg-green/20 px-3 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-widest text-ink">
                 In your downloads — no trial trap, no watermark.
@@ -726,8 +871,14 @@ export function InvoiceGenerator() {
       </div>
 
       <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-        Generated locally with pdf-lib — the invoice service with no 3-invoices-a-month meter.
+        FP INVOICES — generated locally with pdf-lib, no 3-invoices-a-month meter.
       </p>
+
+      <div className="invoice-print-root">
+        <div className="invoice-print-page">
+          <PreviewPage {...previewProps} />
+        </div>
+      </div>
     </ToolShell>
   );
 }
@@ -743,6 +894,7 @@ interface PreviewProps {
   number: string;
   date: string;
   dueDate: string;
+  terms: string;
   currency: string;
   taxPct: string;
   discountPct: string;
@@ -753,7 +905,50 @@ interface PreviewProps {
   tax: number;
   total: number;
   money: (v: number) => string;
+  code: "none" | "barcode" | "qr";
 }
+
+const addrLines = (a: string) => a.split("\n").slice(0, 3).filter(Boolean);
+
+const CodeBlock = ({ code, value }: { code: "barcode" | "qr"; value: string }) => {
+  if (code === "barcode") {
+    const bits = code39Bits(value);
+    const narrow = 1.5;
+    const wide = 3;
+    const rects: { x: number; w: number }[] = [];
+    let x = 0;
+    bits.forEach((b) => {
+      if (b) rects.push({ x, w: wide });
+      x += b ? wide : narrow;
+    });
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <svg width={x} height={34} className="block" shapeRendering="crispEdges">
+          {rects.map((rc, i) => (
+            <rect key={i} x={rc.x} y={0} width={rc.w} height={34} fill="#111" />
+          ))}
+        </svg>
+        <span className="font-mono text-[7px] font-bold tracking-[0.2em] text-ink/50">{value}</span>
+      </div>
+    );
+  }
+  const q = qrcode(0, "M");
+  q.addData(value);
+  q.make();
+  const n = q.getModuleCount();
+  const cell = 2;
+  const rects: { x: number; y: number }[] = [];
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (q.isDark(r, c)) rects.push({ x: c * cell, y: r * cell });
+  return (
+    <svg width={n * cell} height={n * cell} className="block" shapeRendering="crispEdges">
+      {rects.map((rc, i) => (
+        <rect key={i} x={rc.x} y={rc.y} width={cell} height={cell} fill="#111" />
+      ))}
+    </svg>
+  );
+};
 
 function PreviewPage(props: PreviewProps) {
   const {
@@ -767,26 +962,100 @@ function PreviewPage(props: PreviewProps) {
     number,
     date,
     dueDate,
+    terms,
     taxPct,
     discountPct,
     notes,
     items,
     money,
+    code,
   } = props;
 
   const visible = items.filter((it) => it.desc.trim() || it.qty || it.rate).slice(0, 12);
-  const addrLines = (a: string) => a.split("\n").slice(0, 3).filter(Boolean);
   const sFrom = fromName.trim() || "Your company";
   const sClient = clientName.trim() || "Client";
+  const num = number.trim() || "FP-001";
+  const codeVal = num.toUpperCase();
+
+  const fromBlock = (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">From</p>
+      <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
+      {fromEmail.trim() && <p className="text-[10px] text-ink/60">{fromEmail}</p>}
+      {addrLines(fromAddress).map((l) => (
+        <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
+      ))}
+    </div>
+  );
+
+  const toBlock = (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">To</p>
+      <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
+      {clientEmail.trim() && <p className="text-[10px] text-ink/60">{clientEmail}</p>}
+      {addrLines(clientAddress).map((l) => (
+        <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
+      ))}
+      <p className="mt-2 text-[10px] text-ink/60">DATE&nbsp;&nbsp;{date}</p>
+      {dueDate && <p className="text-[10px] text-ink/60">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
+      {terms.trim() && <p className="text-[10px] text-ink/60">TERMS&nbsp;&nbsp;{terms}</p>}
+    </div>
+  );
+
+  const codeBlock = code !== "none" && (
+    <div className="mt-3 flex justify-end">
+      <CodeBlock code={code} value={codeVal} />
+    </div>
+  );
+
+  const rows = visible.map((it, i) => (
+    <div key={i} className={`${ROW_GRID} py-2 text-[11px] ${template === "zebra" && i % 2 === 1 ? "bg-[#F5F0E8]" : ""} ${template === "zebra" ? "px-2" : "border-b border-ink/20"}`}>
+      <span className="truncate">{it.desc}</span>
+      <span className="truncate text-right">{it.qty}</span>
+      <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
+      <span className="truncate text-right font-bold">
+        {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
+      </span>
+    </div>
+  ));
+
+  const totalsBlock = (
+    <div className="w-64 space-y-1.5 text-[11px]">
+      <div className="flex justify-between text-ink/60">
+        <span>SUBTOTAL</span>
+        <span>{money(props.subtotal)}</span>
+      </div>
+      {props.discount > 0 && (
+        <div className="flex justify-between text-ink/60">
+          <span>DISCOUNT ({discountPct}%)</span>
+          <span>-{money(props.discount)}</span>
+        </div>
+      )}
+      {props.tax > 0 && (
+        <div className="flex justify-between text-ink/60">
+          <span>TAX ({taxPct}%)</span>
+          <span>{money(props.tax)}</span>
+        </div>
+      )}
+      <div className="flex justify-between bg-ink px-3 py-2 font-bold text-paper">
+        <span>TOTAL</span>
+        <span>{money(props.total)}</span>
+      </div>
+    </div>
+  );
+
+  const footer = (
+    <p className="mt-auto pt-4 text-[8px] text-ink/30">
+      FP INVOICES — no invoice service counted this one. generated locally by fcuk paywalls
+    </p>
+  );
 
   if (template === "minimal") {
     return (
       <div className="flex h-full w-full flex-col bg-white px-14 pb-10 pt-10 font-mono text-ink">
         <div className="flex items-baseline justify-between">
           <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-ink/40">Invoice</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
-            {number.trim() || "INV-001"}
-          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ink/40">{num}</span>
         </div>
         <div className="mt-2 border-t border-ink/30" />
         <p className="mt-5 text-2xl font-bold uppercase leading-none">{sFrom}</p>
@@ -806,30 +1075,17 @@ function PreviewPage(props: PreviewProps) {
           <div className="text-right">
             <p className="text-[10px] leading-relaxed text-ink/60">DATE  {date}</p>
             {dueDate && <p className="text-[10px] leading-relaxed text-ink/60">DUE  {dueDate}</p>}
+            {terms.trim() && <p className="text-[10px] leading-relaxed text-ink/60">TERMS  {terms}</p>}
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-t border-ink/40 pt-2 text-[9px] font-bold uppercase tracking-widest text-ink/40">
+        <div className={`${ROW_GRID} mt-8 border-t border-ink/40 pt-2 text-[9px] font-bold uppercase tracking-widest text-ink/40`}>
           <span>Description</span>
           <span className="text-right">Qty</span>
           <span className="text-right">Rate</span>
           <span className="text-right">Amount</span>
         </div>
-        <div className="mt-1 flex-1">
-          {visible.map((it, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/15 py-2 text-[11px]"
-            >
-              <span className="truncate">{it.desc}</span>
-              <span className="truncate text-right">{it.qty}</span>
-              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
-              <span className="truncate text-right font-bold">
-                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
-              </span>
-            </div>
-          ))}
-        </div>
+        <div className="mt-1 flex-1">{rows}</div>
         <div className="mt-6 flex justify-end">
           <div className="w-64 space-y-1.5 text-[11px]">
             <div className="flex justify-between text-ink/50">
@@ -860,9 +1116,8 @@ function PreviewPage(props: PreviewProps) {
             <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
           </div>
         )}
-        <p className="mt-auto pt-4 text-[8px] text-ink/30">
-          generated locally by fcuk paywalls — no invoice service counted this one
-        </p>
+        {codeBlock}
+        {footer}
       </div>
     );
   }
@@ -901,31 +1156,23 @@ function PreviewPage(props: PreviewProps) {
                 DUE&nbsp;&nbsp;{dueDate}
               </>
             )}
+            {terms.trim() && (
+              <>
+                <br />
+                TERMS&nbsp;&nbsp;{terms}
+              </>
+            )}
           </span>
-          <span>NUMBER&nbsp;&nbsp;{number.trim() || "INV-001"}</span>
+          <span>NUMBER&nbsp;&nbsp;{num}</span>
         </div>
 
-        <div className="mt-6 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-t-2 border-b-2 border-ink pt-2 pb-2 text-[9px] font-bold uppercase tracking-widest">
+        <div className={`${ROW_GRID} mt-6 border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest`}>
           <span>Description</span>
           <span className="text-right">Qty</span>
           <span className="text-right">Rate</span>
           <span className="text-right">Amount</span>
         </div>
-        <div className="mt-1 flex-1">
-          {visible.map((it, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/15 py-2 text-[11px]"
-            >
-              <span className="truncate">{it.desc}</span>
-              <span className="truncate text-right">{it.qty}</span>
-              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
-              <span className="truncate text-right font-bold">
-                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
-              </span>
-            </div>
-          ))}
-        </div>
+        <div className="mt-1 flex-1">{rows}</div>
         <div className="mt-6 flex justify-end">
           <div className="w-64 space-y-1.5 text-[11px]">
             <div className="flex justify-between">
@@ -956,85 +1203,67 @@ function PreviewPage(props: PreviewProps) {
             <p className="mt-1 whitespace-pre-line text-[10px] italic leading-relaxed text-ink/60">{notes}</p>
           </div>
         )}
-        <p className="mt-auto pt-4 text-center text-[8px] italic text-ink/30">
-          generated locally by fcuk paywalls — no invoice service counted this one
-        </p>
+        {codeBlock}
+        {footer}
       </div>
     );
   }
 
+  const zebra = template === "zebra";
+  const pop = template === "pop";
+
   return (
     <div className="flex h-full w-full flex-col bg-white pb-10 font-mono text-ink">
-      <div className="flex items-center justify-between bg-ink px-14 py-5 text-paper">
+      <div
+        className={`flex items-center justify-between px-14 py-5 ${zebra ? "bg-ink text-paper" : pop ? "bg-yellow text-ink" : "bg-ink text-paper"}`}
+      >
         <span className="font-display text-3xl font-bold uppercase tracking-tight">Invoice</span>
-        <span className="text-sm font-bold">{number.trim() || "INV-001"}</span>
+        <span className="text-sm font-bold">{num}</span>
       </div>
       <div className="flex flex-1 flex-col px-14 pt-6">
         <div className="flex justify-between gap-8">
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">From</p>
-            <p className="mt-1 text-sm font-bold uppercase">{sFrom}</p>
-            {fromEmail.trim() && <p className="text-[10px] text-ink/60">{fromEmail}</p>}
-            {addrLines(fromAddress).map((l) => (
-              <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
-            ))}
-          </div>
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-ink/50">To</p>
-            <p className="mt-1 text-sm font-bold uppercase">{sClient}</p>
-            {clientEmail.trim() && <p className="text-[10px] text-ink/60">{clientEmail}</p>}
-            {addrLines(clientAddress).map((l) => (
-              <p key={l} className="text-[10px] leading-relaxed text-ink/60">{l}</p>
-            ))}
-            <p className="mt-2 text-[10px] text-ink/60">DATE&nbsp;&nbsp;{date}</p>
-            {dueDate && <p className="text-[10px] text-ink/60">DUE&nbsp;&nbsp;&nbsp;{dueDate}</p>}
-          </div>
+          {fromBlock}
+          {toBlock}
         </div>
 
-        <div className="mt-8 grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] gap-2 border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest text-ink/50">
+        <div
+          className={`${ROW_GRID} ${zebra ? "mt-8 bg-ink px-2 py-2 text-[9px] font-bold uppercase tracking-widest text-paper" : pop ? "mt-8 border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest text-ink/50" : "mt-8 border-y-2 border-ink py-2 text-[9px] font-bold uppercase tracking-widest text-ink/50"}`}
+        >
           <span>Description</span>
           <span className="text-right">Qty</span>
           <span className="text-right">Rate</span>
           <span className="text-right">Amount</span>
         </div>
-        <div>
-          {visible.map((it, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7.5rem] items-center gap-2 border-b border-ink/20 py-2 text-[11px]"
-            >
-              <span className="truncate">{it.desc}</span>
-              <span className="truncate text-right">{it.qty}</span>
-              <span className="truncate text-right">{money(parseFloat(it.rate) || 0)}</span>
-              <span className="truncate text-right font-bold">
-                {money((parseFloat(it.qty) || 0) * (parseFloat(it.rate) || 0))}
-              </span>
-            </div>
-          ))}
-        </div>
+        <div className={`mt-1 ${zebra ? "" : "flex-1"}`}>{rows}</div>
         <div className="mt-6 flex justify-end">
-          <div className="w-64 space-y-1.5 text-[11px]">
-            <div className="flex justify-between text-ink/60">
-              <span>SUBTOTAL</span>
-              <span>{money(props.subtotal)}</span>
-            </div>
-            {props.discount > 0 && (
+          {zebra ? (
+            totalsBlock
+          ) : pop ? (
+            <div className="w-64 space-y-1.5 text-[11px]">
               <div className="flex justify-between text-ink/60">
-                <span>DISCOUNT ({discountPct}%)</span>
-                <span>-{money(props.discount)}</span>
+                <span>SUBTOTAL</span>
+                <span>{money(props.subtotal)}</span>
               </div>
-            )}
-            {props.tax > 0 && (
-              <div className="flex justify-between text-ink/60">
-                <span>TAX ({taxPct}%)</span>
-                <span>{money(props.tax)}</span>
+              {props.discount > 0 && (
+                <div className="flex justify-between text-ink/60">
+                  <span>DISCOUNT ({discountPct}%)</span>
+                  <span>-{money(props.discount)}</span>
+                </div>
+              )}
+              {props.tax > 0 && (
+                <div className="flex justify-between text-ink/60">
+                  <span>TAX ({taxPct}%)</span>
+                  <span>{money(props.tax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between bg-red px-3 py-2 font-bold text-ink">
+                <span>TOTAL</span>
+                <span>{money(props.total)}</span>
               </div>
-            )}
-            <div className="flex justify-between bg-ink px-3 py-2 font-bold text-paper">
-              <span>TOTAL</span>
-              <span>{money(props.total)}</span>
             </div>
-          </div>
+          ) : (
+            totalsBlock
+          )}
         </div>
         {notes.trim() && (
           <div className="mt-6">
@@ -1042,9 +1271,8 @@ function PreviewPage(props: PreviewProps) {
             <p className="mt-1 whitespace-pre-line text-[10px] leading-relaxed text-ink/60">{notes}</p>
           </div>
         )}
-        <p className="mt-auto pt-4 text-[8px] text-ink/30">
-          generated locally by fcuk paywalls — no invoice service counted this one
-        </p>
+        {codeBlock}
+        {footer}
       </div>
     </div>
   );
