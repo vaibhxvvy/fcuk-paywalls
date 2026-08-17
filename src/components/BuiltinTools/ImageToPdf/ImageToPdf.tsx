@@ -127,87 +127,113 @@ export function ImageToPdf() {
       title="The binder."
       tagline="Stack images, get back a PDF. JPG and PNG embed natively; anything else is converted first. All in your tab."
     >
-      <div className="mt-10 rounded-lg border-[3px] border-dashed border-ink bg-surface p-5 text-center shadow-brutal-md">
-        <Images className="mx-auto h-8 w-8 text-ink/40" aria-hidden="true" />
-        <p className="mt-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-          Drop images here — one page each
-        </p>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          id="img-pdf-picker"
-          onChange={(e) => {
-            if (e.target.files?.length) void addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <Button size="sm" className="mt-4 uppercase" onClick={() => document.getElementById("img-pdf-picker")?.click()}>
-          <Upload className="h-4 w-4" aria-hidden="true" />
-          Pick images
-        </Button>
-        <p className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
-          Nothing uploads — pages are built right here
-        </p>
-      </div>
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
+            [01] The stack
+          </h2>
 
-      {images.length > 0 && (
-        <section className="mt-6 rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
-              [01] The stack — {images.length} image{images.length > 1 ? "s" : ""}
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => { setImages([]); setDone(null); }} className="uppercase">
-              <X className="h-4 w-4" aria-hidden="true" />
-              Clear all
-            </Button>
-          </div>
-          <ul className="mt-4 space-y-2">
-            {images.map((img, i) => (
-              <li key={img.id} className="flex items-center gap-3 rounded-md border-2 border-ink bg-surface-muted px-3 py-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-2 border-ink bg-ink font-mono text-[11px] font-bold text-surface">
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-mono text-xs font-bold text-ink">{img.name}</span>
-                  <span className="block font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
-                    {img.w}×{img.h}px · {img.isPng ? "PNG" : "JPEG"} · {(img.data.byteLength / 1024).toFixed(0)} KB
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => remove(img.id)}
-                  className="rounded-md border-2 border-ink px-2 py-1 font-mono text-xs font-bold uppercase text-ink transition-[background-color,box-shadow] duration-200 ease-brutal hover:bg-red"
-                  aria-label={`Remove ${img.name}`}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-          <Button size="sm" onClick={() => void makePdf()} disabled={busy} className="mt-4 w-full uppercase">
-            <Download className="h-4 w-4" aria-hidden="true" />
-            {busy ? "Binding…" : `Make PDF (${images.length} page${images.length > 1 ? "s" : ""})`}
-          </Button>
-          {done && (
-            <p className="mt-3 flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/60">
-              <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-ink bg-green" />
-              {done}
+          <div className="mt-4 rounded-lg border-[3px] border-dashed border-ink bg-surface p-5 text-center">
+            <Images className="mx-auto h-8 w-8 text-ink/40" aria-hidden="true" />
+            <p className="mt-2 font-mono text-xs font-bold uppercase tracking-widest text-ink/60">
+              Drop images here — one page each
             </p>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              id="img-pdf-picker"
+              onChange={(e) => {
+                if (e.target.files?.length) void addFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button size="sm" className="mt-4 uppercase" onClick={() => document.getElementById("img-pdf-picker")?.click()}>
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Pick images
+            </Button>
+            <p className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+              Nothing uploads — pages are built right here
+            </p>
+          </div>
+
+          {images.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                  {images.length} image{images.length > 1 ? "s" : ""} — one page each, in this order
+                </p>
+                <Button variant="ghost" size="sm" onClick={() => { setImages([]); setDone(null); }} className="uppercase">
+                  <X className="h-4 w-4" aria-hidden="true" />
+                  Clear all
+                </Button>
+              </div>
+              <ul className="mt-2 space-y-2">
+                {images.map((img, i) => (
+                  <li key={img.id} className="flex items-center gap-3 rounded-md border-2 border-ink bg-surface-muted px-3 py-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-2 border-ink bg-ink font-mono text-[11px] font-bold text-surface">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-mono text-xs font-bold text-ink">{img.name}</span>
+                      <span className="block font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
+                        {img.w}×{img.h}px · {img.isPng ? "PNG" : "JPEG"} · {(img.data.byteLength / 1024).toFixed(0)} KB
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => remove(img.id)}
+                      className="rounded-md border-2 border-ink px-2 py-1 font-mono text-xs font-bold uppercase text-ink transition-[background-color,box-shadow] duration-200 ease-brutal hover:bg-red"
+                      aria-label={`Remove ${img.name}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
-      )}
+
+        <section className="flex min-w-0 flex-col rounded-lg border-[3px] border-ink bg-surface p-5 shadow-brutal-md">
+          <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[02] Pages out</h2>
+
+          {images.length > 0 ? (
+            <>
+              <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                JPG and PNG embed natively; anything else gets converted first
+              </p>
+              <Button size="sm" onClick={() => void makePdf()} disabled={busy} className="mt-4 w-full uppercase">
+                <Download className="h-4 w-4" aria-hidden="true" />
+                {busy ? "Binding…" : `Make PDF (${images.length} page${images.length > 1 ? "s" : ""})`}
+              </Button>
+              {done && (
+                <p className="mt-3 flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-widest text-ink/60">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-ink bg-green" />
+                  {done}
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="mt-4 flex flex-1 items-center justify-center rounded-md border-2 border-dashed border-ink/30 p-6">
+              <p className="text-center font-mono text-xs font-bold uppercase tracking-widest text-ink/30">
+                The PDF lands here — no upload, no account
+              </p>
+            </div>
+          )}
+
+          <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/40">
+            Reuses the same pdf-lib that the PDF joiner loads — still lazy-loaded, still in your tab.
+          </p>
+        </section>
+      </div>
 
       {error && (
         <p className="mt-6 rounded-md border-[3px] border-ink bg-red p-4 font-mono text-xs font-bold uppercase tracking-widest text-ink shadow-brutal-sm">
           {error}
         </p>
       )}
-
-      <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-        Reuses the same pdf-lib that the PDF joiner loads — still lazy-loaded, still in your tab.
-      </p>
     </ToolShell>
   );
 }

@@ -168,7 +168,17 @@ export function PdfUnlocker() {
                   of the image now. The print/copy locks are gone either way.
                 </p>
               )}
-              <object data={out} type="application/pdf" className="mt-4 h-96 w-full rounded-md border-2 border-ink bg-surface-muted" />
+              <div className="mt-4 rounded-md border-2 border-ink bg-surface-muted p-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-ink bg-green" />
+                  <p className="font-mono text-xs font-bold uppercase tracking-widest text-ink">
+                    [ OK ] Locks dropped
+                  </p>
+                </div>
+                <p className="mt-2 break-all font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
+                  {name} → {outName}
+                </p>
+              </div>
               <Button onClick={download} className="mt-4 w-full uppercase">
                 <FileDown className="h-4 w-4" aria-hidden="true" />
                 Download unlocked PDF

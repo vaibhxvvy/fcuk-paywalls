@@ -218,7 +218,17 @@ export function PdfOrganizer() {
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-ink/60">[02] Organized out</h2>
           {out ? (
             <>
-              <object data={out} type="application/pdf" className="mt-4 h-96 w-full rounded-md border-2 border-ink bg-surface-muted" />
+              <div className="mt-4 rounded-md border-2 border-ink bg-surface-muted p-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-ink bg-green" />
+                  <p className="font-mono text-xs font-bold uppercase tracking-widest text-ink">
+                    [ OK ] Rotated & reordered
+                  </p>
+                </div>
+                <p className="mt-2 break-all font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
+                  {name} · {order.length} pages · ready to download
+                </p>
+              </div>
               <Button onClick={download} className="mt-4 w-full uppercase">
                 <Download className="h-4 w-4" aria-hidden="true" />
                 Download organized PDF
