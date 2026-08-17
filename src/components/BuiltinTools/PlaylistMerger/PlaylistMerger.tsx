@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, ExternalLink, FileDown, Link2, ListMusic } from "lucide-react";
+import { FileDown, Link2, ListMusic, Play } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
 
@@ -17,7 +17,6 @@ interface PlaylistData {
 }
 
 const INVIDIOUS = ["https://inv.nadeko.net", "https://yewtu.be", "https://invidious.nerdvpn.de"];
-const MAX_QUEUE_IDS = 2000;
 
 async function fetchPlaylist(input: string): Promise<PlaylistData> {
   const id =
@@ -87,8 +86,7 @@ interface MergedItem {
 interface MergedResult {
   items: MergedItem[];
   skipped: number;
-  url: string;
-  truncated: boolean;
+  m3u: string;
 }
 
 function PlaylistSlot({
@@ -184,7 +182,6 @@ export function PlaylistMerger() {
   const [addon, setAddon] = useState<PlaylistData | null>(null);
   const [skipDupes, setSkipDupes] = useState(true);
   const [merged, setMerged] = useState<MergedResult | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const splice = () => {
     if (!base || !addon) return;
@@ -198,24 +195,24 @@ export function PlaylistMerger() {
     base.videos.forEach((v) => push(v, base.title));
     addon.videos.forEach((v) => push(v, addon.title));
     const skipped = base.videos.length + addon.videos.length - items.length;
-    const truncated = items.length > MAX_QUEUE_IDS;
-    const url = `https://www.youtube.com/watch_videos?video_ids=${items
-      .slice(0, MAX_QUEUE_IDS)
-      .map((m) => m.video.id)
-      .join(",")}`;
-    setMerged({ items, skipped, url, truncated });
-    setCopied(false);
+    const m3u = [
+      "#EXTM3U",
+      ...items.map(
+        (m) =>
+          `#EXTINF:-1,${m.video.title.replace(/[\r\n]+/g, " ")}\nhttps://www.youtube.com/watch?v=${m.video.id}`,
+      ),
+    ].join("\n");
+    setMerged({ items, skipped, m3u });
   };
 
-  const copy = async () => {
+  const downloadM3u = () => {
     if (!merged) return;
-    try {
-      await navigator.clipboard.writeText(merged.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // clipboard unavailable — the box is selectable anyway
-    }
+    const blob = new Blob([merged.m3u], { type: "audio/x-mpegurl" });
+    const a = document.createElement("a");
+    a.download = "merged-queue.m3u";
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const downloadCsv = () => {
@@ -239,7 +236,7 @@ export function PlaylistMerger() {
     <ToolShell
       crumb="PLAYLIST-MERGER"
       title="The splice."
-      tagline="Merge two YouTube playlists into one — paste your playlist, paste another, get a merged queue that plays the whole list in order. YouTube won't let you graft someone else's playlist; the queue link and the CSV are yours."
+      tagline="Merge two YouTube playlists into one — paste your playlist, paste another, get a playlist file that plays the whole merged list in order. YouTube won't let you graft someone else's playlist; the merged queue and the CSV are yours."
     >
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <PlaylistSlot
@@ -296,33 +293,20 @@ export function PlaylistMerger() {
                 {base.videos.length} + {addon.videos.length} → {merged.items.length} videos
                 {merged.skipped > 0 ? ` — ${merged.skipped} duplicates skipped` : ""}
               </p>
-              {merged.truncated && (
-                <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
-                  Queue link caps at {MAX_QUEUE_IDS} — the CSV carries all {merged.items.length}
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-md border-2 border-ink bg-surface px-2 py-1.5 font-mono text-[10px] text-ink">
-                  {merged.url}
-                </code>
-                <Button size="sm" variant="secondary" onClick={() => void copy()} className="uppercase">
-                  <Copy className="h-4 w-4" aria-hidden="true" />
-                  {copied ? "Copied" : "Copy link"}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button size="sm" onClick={downloadM3u} className="uppercase">
+                  <Play className="h-4 w-4" aria-hidden="true" />
+                  Download .m3u — open in VLC / mpv
                 </Button>
-                <a
-                  href={merged.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink bg-ink px-3 py-1.5 font-mono text-[11px] font-bold uppercase text-surface transition-[box-shadow] duration-200 ease-brutal hover:shadow-brutal-sm"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  Open queue
-                </a>
+                <Button size="sm" variant="secondary" onClick={downloadCsv} className="uppercase">
+                  <FileDown className="h-4 w-4" aria-hidden="true" />
+                  Download CSV ({merged.items.length} rows)
+                </Button>
               </div>
-              <Button size="sm" variant="ghost" onClick={downloadCsv} className="mt-3 w-full uppercase">
-                <FileDown className="h-4 w-4" aria-hidden="true" />
-                Download CSV ({merged.items.length} rows)
-              </Button>
+              <p className="mt-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink/40">
+                YouTube killed the old watch_videos queue link — the .m3u file plays the whole merged list
+                in order in any player that understands YouTube URLs.
+              </p>
               <ul className="mt-3 max-h-72 space-y-1 overflow-auto pr-1">
                 {merged.items.map((m, i) => (
                   <li key={i} className="flex items-center gap-2 rounded-sm px-1 py-0.5 hover:bg-yellow/20">
@@ -342,8 +326,8 @@ export function PlaylistMerger() {
       )}
 
       <p className="mt-8 font-mono text-[11px] font-semibold uppercase tracking-widest text-ink/40">
-        The watch_videos link plays the merged queue in order — no account needed. Merging happens in your
-        tab; the videos never leave YouTube.
+        The .m3u opens the merged queue in VLC, mpv or any player — no account needed. Merging happens in
+        your tab; the videos never leave YouTube.
       </p>
     </ToolShell>
   );

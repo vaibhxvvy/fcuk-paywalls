@@ -838,7 +838,7 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     category: "media",
     name: "Playlist merger",
     description:
-      "Merge two YouTube playlists into one — paste a base playlist and an add-on, get a merged watch link that plays the whole queue in order plus a CSV. YouTube won't let you graft someone else's playlist; the queue is yours.",
+      "Merge two YouTube playlists into one — paste a base playlist and an add-on, get a merged .m3u playlist file that plays the whole queue in order in VLC or mpv, plus a CSV. YouTube won't let you graft someone else's playlist; the queue is yours.",
     icon: ListMusic,
     status: "live",
   },
