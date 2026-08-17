@@ -1,16 +1,16 @@
 declare module "imagetracerjs" {
   export interface ImageTracerOptions {
-    numberOfColors?: number;
-    blurRadius?: number;
+    numberofcolors?: number;
+    blurradius?: number;
     scale?: number;
-    strokeWidth?: number;
+    strokewidth?: number;
     linefilter?: boolean;
     pathomit?: number;
     rightangleenhance?: boolean;
     ltres?: number;
     qtres?: number;
     roundcoords?: number;
-    viewport?: boolean;
+    viewbox?: boolean;
   }
 
   const ImageTracer: {

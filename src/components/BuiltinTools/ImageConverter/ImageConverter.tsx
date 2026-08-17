@@ -295,8 +295,8 @@ setTraceRes("auto");
           await new Promise((resolve) => setTimeout(resolve, 50));
           const ImageTracer = (await import("imagetracerjs")).default;
           let svg = ImageTracer.imagedataToSVG(data, {
-            numberOfColors: thresholdOn ? 2 : colors,
-            blurRadius: thresholdOn ? 0 : blur,
+            numberofcolors: thresholdOn ? 2 : colors,
+            blurradius: thresholdOn ? 0 : blur,
             pathomit: 1,
             ltres: 0.5,
             qtres: 0.5,

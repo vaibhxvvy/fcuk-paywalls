@@ -75,6 +75,9 @@ import {
   ListMusic,
   Pencil,
   FileSearch,
+  PenTool,
+  Combine,
+  Columns2,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -161,6 +164,11 @@ const PdfSearchable = lazy(() => import("./PdfSearchable/PdfSearchable").then((m
 const QrBatch = lazy(() => import("./QrBatch/QrBatch").then((m) => ({ default: m.QrBatch })));
 const AudioSplitter = lazy(() => import("./AudioSplitter/AudioSplitter").then((m) => ({ default: m.AudioSplitter })));
 const ImageSlicer = lazy(() => import("./ImageSlicer/ImageSlicer").then((m) => ({ default: m.ImageSlicer })));
+const VectorForge = lazy(() => import("./VectorForge/VectorForge").then((m) => ({ default: m.VectorForge })));
+const VideoJoiner = lazy(() => import("./VideoJoiner/VideoJoiner").then((m) => ({ default: m.VideoJoiner })));
+const PdfCropper = lazy(() => import("./PdfCropper/PdfCropper").then((m) => ({ default: m.PdfCropper })));
+const PhotoStitcher = lazy(() => import("./PhotoStitcher/PhotoStitcher").then((m) => ({ default: m.PhotoStitcher })));
+const GifRipper = lazy(() => import("./GifRipper/GifRipper").then((m) => ({ default: m.GifRipper })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -894,6 +902,51 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: LayoutGrid,
     status: "live",
   },
+  {
+    id: "vector-forge",
+    category: "image",
+    name: "Vector forge",
+    description:
+      "Turn a PNG or JPEG into a clean SVG — color count, path cleanup, pre-blur and scale controls, re-traced instantly in the tab. Vectorizer.AI charges $9.99/mo or 20 cents an image (and 0.2 credits for a watermarked preview) for this.",
+    icon: PenTool,
+    status: "live",
+  },
+  {
+    id: "video-joiner",
+    category: "media",
+    name: "Video joiner",
+    description:
+      "Merge any number of clips into one WebM in the order you pick — reorder, quality knob, per-file progress. No watermark, no 1-minute cap, no account. Kapwing's free plan watermarks every export; Pro is $16/mo.",
+    icon: Combine,
+    status: "live",
+  },
+  {
+    id: "pdf-cropper",
+    category: "pdf",
+    name: "PDF cropper",
+    description:
+      "Trim margins off every page of a PDF with live page-1 preview of the cut. iLovePDF keeps 'Crop PDF' behind Premium (~$7/mo); a crop is shrinking the MediaBox.",
+    icon: Crop,
+    status: "live",
+  },
+  {
+    id: "photo-stitcher",
+    category: "image",
+    name: "Photo stitcher",
+    description:
+      "Stack any number of photos into one long vertical or horizontal strip — gap, direction and width controls, full-res PNG out. Pic Stitch Pro $34.99/yr, Photo Stitch Pro $29.99, Stiiitch charges 99¢ to drop its watermark.",
+    icon: Columns2,
+    status: "live",
+  },
+  {
+    id: "gif-ripper",
+    category: "image",
+    name: "GIF ripper",
+    description:
+      "Split an animated GIF into PNG frames — every frame or every Nth, correct disposal composition, one ZIP. No upload, no ~200 MB cap, no 1-hour deletion clock.",
+    icon: Film,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -976,6 +1029,11 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "qr-batch": () => <QrBatch />,
   "audio-splitter": () => <AudioSplitter />,
   "image-slicer": () => <ImageSlicer />,
+  "vector-forge": () => <VectorForge />,
+  "video-joiner": () => <VideoJoiner />,
+  "pdf-cropper": () => <PdfCropper />,
+  "photo-stitcher": () => <PhotoStitcher />,
+  "gif-ripper": () => <GifRipper />,
 };
 
 interface BuiltinToolsProps {
