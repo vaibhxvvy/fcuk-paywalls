@@ -72,6 +72,7 @@ import {
   ImageIcon,
   RefreshCcw,
   Lock,
+  ListMusic,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -152,6 +153,7 @@ const GifForge = lazy(() => import("./GifForge/GifForge").then((m) => ({ default
 const PhotoLab = lazy(() => import("./PhotoLab/PhotoLab").then((m) => ({ default: m.PhotoLab })));
 const PdfOrganizer = lazy(() => import("./PdfOrganizer/PdfOrganizer").then((m) => ({ default: m.PdfOrganizer })));
 const PdfLock = lazy(() => import("./PdfLock/PdfLock").then((m) => ({ default: m.PdfLock })));
+const PlaylistMerger = lazy(() => import("./PlaylistMerger/PlaylistMerger").then((m) => ({ default: m.PlaylistMerger })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -831,6 +833,15 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: Lock,
     status: "live",
   },
+  {
+    id: "playlist-merger",
+    category: "media",
+    name: "Playlist merger",
+    description:
+      "Merge two YouTube playlists into one — paste a base playlist and an add-on, get a merged watch link that plays the whole queue in order plus a CSV. YouTube won't let you graft someone else's playlist; the queue is yours.",
+    icon: ListMusic,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -907,6 +918,7 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "photo-lab": () => <PhotoLab />,
   "pdf-organizer": () => <PdfOrganizer />,
   "pdf-lock": () => <PdfLock />,
+  "playlist-merger": () => <PlaylistMerger />,
 };
 
 interface BuiltinToolsProps {

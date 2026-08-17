@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Download, FileText, RefreshCcw } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
+import { renderPdfPreview } from "../shared/pdfPreview";
 
 interface PageState {
   index: number;
@@ -15,6 +16,7 @@ export function PdfOrganizer() {
   const [order, setOrder] = useState<PageState[]>([]);
   const [busy, setBusy] = useState(false);
   const [out, setOut] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const srcDocRef = useRef<import("pdf-lib").PDFDocument | null>(null);
 
@@ -22,6 +24,7 @@ export function PdfOrganizer() {
     setBusy(true);
     setError(null);
     setOut(null);
+    setPreview(null);
     setName(file.name);
     try {
       const buf = await file.arrayBuffer();
@@ -88,6 +91,8 @@ export function PdfOrganizer() {
       });
       const bytes = await out.save();
       setOut(URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" })));
+      const p = await renderPdfPreview(bytes);
+      if (p) setPreview(p);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");
     } finally {
@@ -228,6 +233,19 @@ export function PdfOrganizer() {
                 <p className="mt-2 break-all font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
                   {name} · {order.length} pages · ready to download
                 </p>
+              </div>
+              <div className="mt-4 rounded-md border-2 border-ink bg-surface-muted p-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                    Preview — page 1
+                  </p>
+                  <span className="inline-block h-2 w-2 rounded-full border-2 border-ink bg-yellow" />
+                </div>
+                <img
+                  src={preview ?? undefined}
+                  alt="Preview of the organized PDF"
+                  className="mt-2 w-full rounded-sm border-2 border-ink bg-surface object-contain"
+                />
               </div>
               <Button onClick={download} className="mt-4 w-full uppercase">
                 <Download className="h-4 w-4" aria-hidden="true" />

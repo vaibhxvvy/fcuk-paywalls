@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { FileDown, Lock, LockOpen } from "lucide-react";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
+import { renderPdfPreview } from "../shared/pdfPreview";
 
 export function PdfUnlocker() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -12,6 +13,7 @@ export function PdfUnlocker() {
   const [out, setOut] = useState<string | null>(null);
   const [outName, setOutName] = useState("");
   const [mode, setMode] = useState<"clean" | "raster" | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const unlock = async (file: File) => {
@@ -20,6 +22,7 @@ export function PdfUnlocker() {
     setError(null);
     setOut(null);
     setMode(null);
+    setPreview(null);
     setName(file.name);
     try {
       const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
@@ -37,12 +40,14 @@ export function PdfUnlocker() {
       const src = await PDFDocument.load(buf, { ignoreEncryption: true });
       const encrypted = src.isEncrypted;
 
+      let outBytes: Uint8Array | null = null;
+
       if (!encrypted) {
         const out = await PDFDocument.create();
         const pages = await out.copyPages(src, src.getPageIndices());
         pages.forEach((p) => out.addPage(p));
-        const bytes = await out.save();
-        setOut(URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" })));
+        outBytes = await out.save();
+        setOut(URL.createObjectURL(new Blob([new Uint8Array(outBytes).buffer as ArrayBuffer], { type: "application/pdf" })));
         setMode("clean");
       } else {
         const out = await PDFDocument.create();
@@ -61,9 +66,13 @@ export function PdfUnlocker() {
           setProgress(Math.round((i / doc.numPages) * 100));
           await new Promise((r) => setTimeout(r, 0));
         }
-        const bytes = await out.save();
-        setOut(URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], { type: "application/pdf" })));
+        outBytes = await out.save();
+        setOut(URL.createObjectURL(new Blob([new Uint8Array(outBytes).buffer as ArrayBuffer], { type: "application/pdf" })));
         setMode("raster");
+      }
+      if (outBytes) {
+        const p = await renderPdfPreview(outBytes);
+        if (p) setPreview(p);
       }
       setOutName(file.name.replace(/\.pdf$/i, "") + "-unlocked.pdf");
       setBusy(false);
@@ -178,6 +187,19 @@ export function PdfUnlocker() {
                 <p className="mt-2 break-all font-mono text-[10px] font-semibold uppercase tracking-widest text-ink/50">
                   {name} → {outName}
                 </p>
+              </div>
+              <div className="mt-4 rounded-md border-2 border-ink bg-surface-muted p-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/50">
+                    Preview — page 1
+                  </p>
+                  <span className="inline-block h-2 w-2 rounded-full border-2 border-ink bg-yellow" />
+                </div>
+                <img
+                  src={preview ?? undefined}
+                  alt="Preview of the unlocked PDF"
+                  className="mt-2 w-full rounded-sm border-2 border-ink bg-surface object-contain"
+                />
               </div>
               <Button onClick={download} className="mt-4 w-full uppercase">
                 <FileDown className="h-4 w-4" aria-hidden="true" />
