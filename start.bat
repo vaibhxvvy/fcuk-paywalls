@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 title FCUK PAYWALLS - DEV
 
@@ -11,10 +11,18 @@ if errorlevel 1 (
 )
 
 if not exist node_modules (
-    echo [*] Installing dependencies...
-    call npm install
-    if errorlevel 1 (
-        echo [X] npm install failed.
+    echo [*] Dependencies not found ^(node_modules is missing^).
+    set /p answer=Install them now? [Y/N]: 
+    if /i "!answer!"=="Y" (
+        echo [*] Installing dependencies...
+        call npm install
+        if errorlevel 1 (
+            echo [X] npm install failed.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo [X] Dependencies are required to run. Re-run start.bat and choose Y to install.
         pause
         exit /b 1
     )

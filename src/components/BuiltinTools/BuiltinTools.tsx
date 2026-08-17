@@ -73,6 +73,8 @@ import {
   RefreshCcw,
   Lock,
   ListMusic,
+  Pencil,
+  FileSearch,
   type LucideIcon,
 } from "lucide-react";
 import { useModal } from "../../hooks/useModal";
@@ -154,6 +156,11 @@ const PhotoLab = lazy(() => import("./PhotoLab/PhotoLab").then((m) => ({ default
 const PdfOrganizer = lazy(() => import("./PdfOrganizer/PdfOrganizer").then((m) => ({ default: m.PdfOrganizer })));
 const PdfLock = lazy(() => import("./PdfLock/PdfLock").then((m) => ({ default: m.PdfLock })));
 const PlaylistMerger = lazy(() => import("./PlaylistMerger/PlaylistMerger").then((m) => ({ default: m.PlaylistMerger })));
+const SketchForge = lazy(() => import("./SketchForge/SketchForge").then((m) => ({ default: m.SketchForge })));
+const PdfSearchable = lazy(() => import("./PdfSearchable/PdfSearchable").then((m) => ({ default: m.PdfSearchable })));
+const QrBatch = lazy(() => import("./QrBatch/QrBatch").then((m) => ({ default: m.QrBatch })));
+const AudioSplitter = lazy(() => import("./AudioSplitter/AudioSplitter").then((m) => ({ default: m.AudioSplitter })));
+const ImageSlicer = lazy(() => import("./ImageSlicer/ImageSlicer").then((m) => ({ default: m.ImageSlicer })));
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -842,6 +849,51 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: ListMusic,
     status: "live",
   },
+  {
+    id: "sketch-forge",
+    category: "image",
+    name: "Sketch forge",
+    description:
+      "Turn a photo into a pencil, ink-pen, charcoal or comic sketch — live canvas math with pressure, threshold and paper tone controls. The AI-sketch sites meter every generation behind credits; a blend mode and an edge filter are free.",
+    icon: Pencil,
+    status: "live",
+  },
+  {
+    id: "pdf-searchable",
+    category: "pdf",
+    name: "PDF searchable (OCR)",
+    description:
+      "Make a scanned PDF searchable — Tesseract reads every page in your tab and the words land as an invisible text layer, so Ctrl-F and copy-paste work. Acrobat Pro charges ~$29.99/mo for scan & OCR.",
+    icon: FileSearch,
+    status: "live",
+  },
+  {
+    id: "qr-batch",
+    category: "web",
+    name: "QR batch",
+    description:
+      "Paste hundreds of values, get hundreds of QR PNGs in one ZIP — error correction, size and quiet zone included. QRExplore caps free batches at 100 codes and sells credits past it.",
+    icon: QrCode,
+    status: "live",
+  },
+  {
+    id: "audio-splitter",
+    category: "media",
+    name: "Audio splitter",
+    description:
+      "Cut one audio file into many — fixed-length chunks or split at the silences, all WAV parts in one ZIP. The online cutters ration free users to a job an hour and watermark downloads.",
+    icon: Scissors,
+    status: "live",
+  },
+  {
+    id: "image-slicer",
+    category: "image",
+    name: "Image slicer",
+    description:
+      "Cut one image into a perfect grid — 9 squares for Instagram, tiles for a mosaic — full-resolution PNGs in one ZIP. The slice sites watermark free exports and cap the ZIP behind signup.",
+    icon: LayoutGrid,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -919,6 +971,11 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "pdf-organizer": () => <PdfOrganizer />,
   "pdf-lock": () => <PdfLock />,
   "playlist-merger": () => <PlaylistMerger />,
+  "sketch-forge": () => <SketchForge />,
+  "pdf-searchable": () => <PdfSearchable />,
+  "qr-batch": () => <QrBatch />,
+  "audio-splitter": () => <AudioSplitter />,
+  "image-slicer": () => <ImageSlicer />,
 };
 
 interface BuiltinToolsProps {
