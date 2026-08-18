@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { Crop, FileText, Upload } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
-import { getDocument } from "pdfjs-dist";
 import { renderPdfPreview } from "../shared/pdfPreview";
 import { ToolShell } from "../shared/ToolShell";
 import { Button } from "../../ui/button";
@@ -29,6 +28,9 @@ export function PdfCropper() {
     setSize("");
     try {
       const buf = await f.arrayBuffer();
+      const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
+      const workerUrl = await import("pdfjs-dist/build/pdf.worker.min.mjs?url").then((m) => m.default as string);
+      GlobalWorkerOptions.workerSrc = workerUrl;
       const src = await getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
       const p1 = await src.getPage(1);
       const vp = p1.getViewport({ scale: 1 });
