@@ -169,6 +169,10 @@ const VideoJoiner = lazy(() => import("./VideoJoiner/VideoJoiner").then((m) => (
 const PdfCropper = lazy(() => import("./PdfCropper/PdfCropper").then((m) => ({ default: m.PdfCropper })));
 const PhotoStitcher = lazy(() => import("./PhotoStitcher/PhotoStitcher").then((m) => ({ default: m.PhotoStitcher })));
 const GifRipper = lazy(() => import("./GifRipper/GifRipper").then((m) => ({ default: m.GifRipper })));
+const YtClipper = lazy(() => import("./YtClipper/YtClipper").then((m) => ({ default: m.YtClipper })));
+const MediaConverter = lazy(() =>
+  import("./MediaConverter/MediaConverter").then((m) => ({ default: m.MediaConverter })),
+);
 
 type ToolCategory = "text" | "code" | "image" | "web" | "pdf" | "media";
 
@@ -947,6 +951,24 @@ const BUILTIN_TOOLS: BuiltinToolEntry[] = [
     icon: Film,
     status: "live",
   },
+  {
+    id: "yt-clipper",
+    category: "media",
+    name: "YT clipper",
+    description:
+      "Paste a YouTube link, preview it here, pick the exact seconds — share a timestamped link or grab the MP4 via Cobalt and finish it locally.",
+    icon: Scissors,
+    status: "live",
+  },
+  {
+    id: "media-converter",
+    category: "media",
+    name: "Media converter",
+    description:
+      "Drop an MP4, WebM or audio file, trim the seconds, walk out with MP3, WAV, OGG, M4A or FLAC — encoded in your tab.",
+    icon: ArrowLeftRight,
+    status: "live",
+  },
 ];
 
 const TOOL_ROUTES: Record<string, () => ReactNode> = {
@@ -1034,6 +1056,8 @@ const TOOL_ROUTES: Record<string, () => ReactNode> = {
   "pdf-cropper": () => <PdfCropper />,
   "photo-stitcher": () => <PhotoStitcher />,
   "gif-ripper": () => <GifRipper />,
+  "yt-clipper": () => <YtClipper />,
+  "media-converter": () => <MediaConverter />,
 };
 
 interface BuiltinToolsProps {
